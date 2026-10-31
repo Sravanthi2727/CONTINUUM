@@ -15,7 +15,7 @@ export class ApiError extends Error {
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('continuum_token') ? { Authorization: 'Bearer ' + localStorage.getItem('continuum_token')} : {}), ...options?.headers },
   })
 
   if (!res.ok) {
@@ -42,7 +42,7 @@ export async function apiPostRaw(
 }> {
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('continuum_token') ? { Authorization: 'Bearer ' + localStorage.getItem('continuum_token') } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const resBody = await res.json().catch(() => ({}))

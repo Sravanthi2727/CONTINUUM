@@ -30,6 +30,62 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// GET /runs/:id/events - convenience endpoint for dashboard
+router.get("/:id/events", async (req: Request, res: Response) => {
+  try {
+    const eventsCol = getCollection<any>("events");
+    const events = await eventsCol.find({ run_id: req.params.id }).sort({ step: 1, timestamp: 1 }).toArray();
+    res.json(events);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /runs/:id/divergence - convenience endpoint for dashboard
+router.get("/:id/divergence", async (req: Request, res: Response) => {
+  try {
+    const { runDivergence } = await import("../intelligence/runDivergence");
+    const { getDB } = await import("../db/mongo");
+    const result = await runDivergence(getDB(), req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /runs/:id/similar - convenience endpoint for dashboard
+router.get("/:id/similar", async (req: Request, res: Response) => {
+  try {
+    const eventsCol = getCollection<any>("events");
+    const errorEvent = await eventsCol.findOne({ run_id: req.params.id, error_message: { $exists: true, $ne: "" } });
+    if (!errorEvent) return res.json([]);
+    const { similarFailures } = await import("../intelligence/similarFailures");
+    const { getDB } = await import("../db/mongo");
+    const result = await similarFailures(getDB(), errorEvent.error_message);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /runs/:id/findings - convenience endpoint for dashboard
+router.get("/:id/findings", async (req: Request, res: Response) => {
+  try {
+    const { getDB } = await import("../db/mongo");
+    const findingsCol = getDB().collection("findings");
+    const findings = await findingsCol.find({
+      $or: [
+        { "details.run_id": req.params.id },
+        { "details.baseline_run_id": req.params.id },
+        { run_id: req.params.id }
+      ]
+    }).toArray();
+    res.json(findings);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /runs
 router.post("/", async (req: Request, res: Response) => {
   try {

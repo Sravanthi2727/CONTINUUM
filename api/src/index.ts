@@ -42,6 +42,7 @@ async function startChangeStreamListener() {
   const changeStream = eventsCol.watch([], { fullDocument: "updateLookup" });
   changeStream.on("change", (change) => {
     if (change.operationType === "insert" && change.fullDocument) {
+      io.emit("event:created", change.fullDocument);
       io.emit("event:new", change.fullDocument);
       console.log("📡 Change stream → socket.io:", change.fullDocument._id);
     }
@@ -58,6 +59,7 @@ async function startChangeStreamListener() {
       io.emit("run:updated", change.fullDocument);
     }
     if (change.operationType === "insert" && change.fullDocument) {
+      io.emit("run:created", change.fullDocument);
       io.emit("run:new", change.fullDocument);
     }
   });

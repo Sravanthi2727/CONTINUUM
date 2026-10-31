@@ -35,6 +35,21 @@ router.get("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// GET /projects/:id/runs - convenience endpoint for dashboard
+router.get("/:id/runs", async (req: Request, res: Response) => {
+  try {
+    const runsCol = getCollection<any>("runs");
+    const filter: any = { project_id: req.params.id };
+    if (req.query.source) filter.source = req.query.source;
+    if (req.query.status) filter.status = req.query.status;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const runs = await runsCol.find(filter).sort({ started_at: -1 }).limit(limit).toArray();
+    res.json(runs);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /projects
 router.post("/", optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
   try {
