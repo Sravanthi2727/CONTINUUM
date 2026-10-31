@@ -4,89 +4,187 @@
 
 **A CLI + MCP layer that captures every build/test/deploy run — human or agent — into MongoDB, turns that history into live diagnoses (why it failed, is it safe), and gives any agent, any session, any teammate access to the same memory.**
 
+**Track:** Track 3, Developer Tools for Production Use Cases  
+**Live Demo:** Express API + Change Streams + React Vite Dashboard + CLI + MCP Server
+
 ---
 
-## Architecture
+## 1. Architecture
 
 ```
-┌─────────────┐      ┌──────────────┐      ┌─────────────────┐
-│  Human CLI   │─────▶│              │      │                 │
-│ "cnt run ..."│      │  Ingestion    │─────▶│    MongoDB      │
-└─────────────┘      │  API (Express │      │  Atlas          │
-┌─────────────┐      │  + TS)        │      │  - projects     │
-│ Agent (MCP   │─────▶│              │      │  - runs         │
-│ tool calls)  │      └──────┬───────┘      │  - events       │
-└─────────────┘             │               │  - verifications│
-                             │               │  - findings     │
-                      ┌──────▼───────┐      └────────┬────────┘
-                      │ Change Stream │               │
-                      │ Listener      │◀──────────────┘
-                      └──────┬───────┘
-                             │ (websocket)
-                      ┌──────▼───────┐
-                      │ Web Dashboard │
-                      │ (React + TS)  │
-                      └───────────────┘
+  Human CLI ──┐
+              ├──▶ Ingestion API (Express + TS) ──▶ MongoDB Atlas
+  Agent / MCP ─┘            │                           │
+                            │                  Change Streams
+                            │                           │
+                            └─────── Socket.IO ◀────────┘
+                                          │
+                                   React Dashboard
 ```
 
-Two independent write paths (CLI, MCP) → one ingestion API → one MongoDB → live-pushed to one dashboard.
+Two independent write paths (Human CLI, Agent MCP) feed **one** ingestion API and **one** database, which pushes live state via Change Streams to **one** dashboard.
 
-## Tech Stack (all TypeScript)
+---
 
-| Layer | Tech |
-|---|---|
-| CLI | Node + TypeScript, `commander` |
-| Ingestion API | Express/Fastify + TypeScript |
-| MCP Server | `@modelcontextprotocol/sdk` (`getProjectHistory`, `findSimilarFailures`) |
-| Database | MongoDB Atlas (Vector Search + Change Streams + Atlas Triggers) |
-| Embeddings | Voyage AI / OpenAI `text-embedding-3-small` via Atlas Trigger |
-| Realtime | MongoDB Change Streams → Socket.IO |
-| Web Dashboard | React + Vite + TypeScript |
-| Auth | JWT email/password or magic-link, scoped by `owner_id` |
-| Hosting | Render/Railway (API), Vercel (dashboard) |
+## 2. Why MongoDB? (Single System Advantage)
 
-## Data Model
+| Problem | Traditional Architecture | With MongoDB |
+|---|---|---|
+| **Event Deduplication** | Redis cache + distributed lock + manual check | Unique `_id` (`event_id`) on the `events` collection (`E11000` handled cleanly) |
+| **Schema Validation** | Custom middleware per endpoint | `$jsonSchema` database-level collection validator |
+| **Run Divergence & Flakiness** | Pull all logs to app memory, iterate & group | Aggregation pipelines computed inside the database engine |
+| **Realtime Dashboard** | External Pub/Sub (Kafka/RabbitMQ) + polling | Built-in **MongoDB Change Streams** (`db.events.watch()`) piped to Socket.IO |
+| **Semantic Failure Clustering** | External Vector DB (Pinecone/Weaviate) + sync jobs | **Atlas Vector Search** residing in the same collection alongside structured data |
 
-- **Project** — `project_id`, `owner_id`, `name`, `repo_url`, `instrumentation_enabled`, `created_at`
-- **Run** — `run_id`, `project_id`, `source` (human/agent), `agent_name`, `triggered_by`, `commit_sha`, `task_description`, `status`, `started_at`, `ended_at`
-- **Event** — `event_id` (unique), `run_id`, `type`, `step`, `payload`, `error_message`, `error_embedding`, `timestamp`
-- **Verification** — `run_id`, `claims[]`, `verdict` (safe/risky/blocked), `computed_at`
-- **Finding** — `project_id`, `type` (flaky_test/regression/divergence/similar_past_failure), `details`, `created_at`
+> *"Everything here would normally require 3–4 separate infrastructure pieces. MongoDB delivers it as one cohesive system."*
 
-## Core Pipelines
+---
 
-1. **Flaky vs Regression** — failure rate of a test over last N runs → verdict.
-2. **Run Divergence (Debugger)** — `$lookup` failed run's events against last successful run, align by `step`, find first mismatch.
-3. **Claim Verification** — cross-check agent's claimed requirements/tests against actual diff + test results → proven/unproven/blocked.
-4. **Semantic Failure Clustering** — vector search on `error_embedding` → "N% similar to past failures."
-5. **Live Timeline** — change stream on `events` → push to dashboard via Socket.IO.
+## 3. Monorepo Structure
 
-## CLI
+```
+CONTINUUM/
+├── packages/
+│   ├── api/             # Express + TypeScript + Socket.IO server & Change Streams
+│   ├── intelligence/    # Member B Core: Flaky vs Regression, Divergence Debugger, Claim Verification, Vector Search
+│   ├── mcp-server/      # Model Context Protocol server (getProjectHistory, findSimilarFailures, submitRunEvent)
+│   ├── cli/             # Developer CLI: cnt init, cnt run, cnt history, cnt link-agent
+│   ├── dashboard/       # React + Vite + TypeScript dashboard (Projects, Timeline, Run Detail with Live Demo)
+│   └── seed/            # Comprehensive seed script with 2 weeks of realistic human & agent runs
+```
+
+---
+
+## 4. Member B: Intelligence Layer Pipelines
+
+1. **Run Divergence Debugger (`/intelligence/divergence?run_id=...`)**
+   - Compares a failed run's step events against the last successful run on the same project.
+   - Automatically aligns events by `step` and isolates the exact divergence point, mismatching event types, and payload diffs.
+
+2. **Flaky vs Regression (`/intelligence/flaky?test_name=...&project_id=...`)**
+   - Aggregates `test_result` events across commits.
+   - If failures occur intermittently across multiple distinct commits → flagged as **Flaky Test**.
+   - If failures correlate with a specific commit introduction → flagged as **Regression**.
+
+3. **Claim Verification (`/intelligence/verify`)**
+   - Audits agent claims (e.g. "auth fixed", "all tests pass") against actual `diff_submitted` and `test_result` events.
+   - Generates deterministic verdicts: `safe`, `risky`, or `blocked`.
+
+4. **Vector Search / Semantic Failure Clustering (`/intelligence/similar?error_text=...`)**
+   - Queries Atlas Vector Search on `error_embedding` or token overlap similarity.
+   - Instantaneously surfaces past runs with identical or related root causes.
+
+---
+
+## 5. Quick Start & Setup
+
+### Prerequisites
+- Node.js 18+ (tested on Node v22)
+- MongoDB Atlas cluster URI
+
+### Environment Setup
+
+Create `.env` in `packages/api`:
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@continuum.xn4mwbj.mongodb.net/continuum?retryWrites=true&w=majority
+PORT=3001
+JWT_SECRET=continuum_secret_2026
+CLIENT_URL=http://localhost:5173
+```
+
+Create `.env` in `packages/mcp-server`:
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@continuum.xn4mwbj.mongodb.net/continuum?retryWrites=true&w=majority
+API_BASE_URL=http://localhost:3001
+```
+
+Create `.env` in `packages/dashboard`:
+```env
+VITE_API_URL=http://localhost:3001
+VITE_SOCKET_URL=http://localhost:3001
+```
+
+### Installation & Build
 
 ```bash
-cnt init          # registers project, writes .continuum.json
-cnt run "npm test"  # wraps command, logs command_run event
-cnt link-agent    # prints MCP server config snippet
-cnt history       # last N runs for this project
+# Install root and workspace dependencies
+npm install
+
+# Build all packages (API, CLI, Intelligence, MCP, Dashboard)
+npm run build
+
+# Seed the database with realistic demo runs and events
+npm run seed
 ```
 
-## MCP Tools
+### Running the Services
 
-- `getProjectHistory(project_id): Run[]`
-- `findSimilarFailures(error_text): Finding[]`
-- `submitRunEvent(run_id, event): void`
+```bash
+# Terminal 1: Run Ingestion API & Change Stream listener
+npm run dev:api
 
-## Dashboard (4 pages)
+# Terminal 2: Run Dashboard
+npm run dev:dashboard
+```
 
-1. Login — JWT, scopes by `owner_id`
-2. Projects list
-3. Timeline view — live-updating run history, filter human vs agent
-4. Run detail — events sequence, verdict badge, divergence panel, similar-failures panel
+---
 
-## Why MongoDB
+## 6. CLI Usage (`cnt`)
 
-Everything here would normally require 3–4 separate pieces of infrastructure stitched together. MongoDB does it as one system — unique index for dedup, `$jsonSchema` for validation, aggregation for flakiness, Change Streams for realtime, Atlas Vector Search for semantic matching.
+```bash
+# Initialize a repo as a CONTINUUM project (generates .continuum.json)
+node packages/cli/dist/index.js init
 
-## Detailed Spec
+# Wrap any command — logs command_run, test_result, and failure events live
+node packages/cli/dist/index.js run "npm test"
 
-See [`code.txt`](./code.txt) for the full team breakdown, demo script, and hour-by-hour plan.
+# View recent run history directly from the terminal
+node packages/cli/dist/index.js history --limit 5
+
+# Output MCP server config for Cursor or Claude Code
+node packages/cli/dist/index.js link-agent
+```
+
+---
+
+## 7. Model Context Protocol (MCP) Server
+
+Connect your AI agent (Cursor, Claude Code, Windsurf) to CONTINUUM memory:
+
+```json
+{
+  "mcpServers": {
+    "continuum": {
+      "command": "node",
+      "args": ["./packages/mcp-server/dist/index.js"],
+      "env": {
+        "MONGODB_URI": "mongodb+srv://<user>:<password>@continuum.xn4mwbj.mongodb.net/continuum",
+        "API_BASE_URL": "http://localhost:3001"
+      }
+    }
+  }
+}
+```
+
+Exposed MCP Tools:
+- `getProjectHistory(project_id, limit)`: Provides cross-session historical context to AI agents.
+- `findSimilarFailures(error_text, limit)`: Diagnoses current agent errors using past failure clusters.
+- `submitRunEvent(run_id, event_id, type, step, payload, error_message)`: Allows agents to register their actions directly into CONTINUUM.
+
+---
+
+## 8. Live Demo Script (Judges Walkthrough)
+
+1. **Dashboard Overview (`http://localhost:5173`)**:
+   - Open projects list → select `CONTINUUM Demo Project`.
+   - View timeline with human vs agent runs, status badges, and duration.
+2. **Divergence Debugger**:
+   - Click on the failed run (`d2bd20cd-7026-4d4b-98e9-46dbed57649c`).
+   - Examine the **Divergence Analysis panel**: shows exact step mismatch between the failed run and the prior successful run.
+   - Review **Similar Past Failures** matching the error text.
+3. **Live Failure Case Testing**:
+   - Click **"Replay Duplicate event_id"** button in the dashboard: MongoDB rejects it with `409 DUPLICATE_EVENT` (E11000).
+   - Click **"Send Malformed Event"** button: MongoDB / API rejects it with `400 / 422 SCHEMA_VIOLATION`.
+4. **Live CLI Execution**:
+   - Run `node packages/cli/dist/index.js run "npm test"`.
+   - Watch the new run and events stream live into the dashboard via Socket.IO change streams without page refreshes!
