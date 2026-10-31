@@ -1,3 +1,11 @@
+export interface User {
+  _id: string;
+  email: string;
+  password_hash: string;
+  name: string;
+  created_at: Date;
+}
+
 export interface Project {
   _id: string;
   owner_id: string;

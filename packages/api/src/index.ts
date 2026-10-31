@@ -8,6 +8,7 @@ import projectsRouter from "./routes/projects";
 import runsRouter from "./routes/runs";
 import eventsRouter from "./routes/events";
 import intelligenceRouter from "./routes/intelligence";
+import authRouter from "./routes/auth";
 
 const app = express();
 const httpServer = createServer(app);
@@ -27,6 +28,7 @@ app.use("/projects", projectsRouter);
 app.use("/runs", runsRouter);
 app.use("/events", eventsRouter);
 app.use("/intelligence", intelligenceRouter);
+app.use("/auth", authRouter);
 
 async function startChangeStreamListener() {
   const db = getDB();
