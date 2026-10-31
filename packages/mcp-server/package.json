@@ -2,6 +2,9 @@
   "name": "@continuum/mcp-server",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "bin": {
+    "continuum-mcp": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",

@@ -152,8 +152,25 @@ node packages/cli/dist/index.js link-agent
 
 ## 7. Model Context Protocol (MCP) Server
 
-Connect your AI agent (Cursor, Copilot, Claude Code, AGY, OpenCode) directly to the CONTINUUM cloud API (no database credentials needed!):
+Connect your AI agent (Cursor, Copilot, Claude Code, AGY, OpenCode) directly to the CONTINUUM cloud API.
 
+### Option A: Universal Binary (Recommended for any teammate)
+Once linked or installed via npm (`npm link` inside `packages/mcp-server`), your teammate doesn't need hardcoded file paths at all:
+
+```json
+{
+  "mcpServers": {
+    "continuum": {
+      "command": "continuum-mcp",
+      "env": {
+        "API_BASE_URL": "https://continuum-api-rkp4.onrender.com"
+      }
+    }
+  }
+}
+```
+
+### Option B: Relative Workspace Path (Inside cloned repo)
 ```json
 {
   "mcpServers": {

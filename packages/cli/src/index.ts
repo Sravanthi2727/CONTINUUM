@@ -205,18 +205,27 @@ program
     const mcpConfig = {
       mcpServers: {
         continuum: {
-          command: "node",
-          args: ["./packages/mcp-server/dist/index.js"],
+          command: "continuum-mcp",
           env: {
             API_BASE_URL: API_URL,
           },
         },
       },
     };
-    console.log("\n📋 Add this to your agent's MCP config file (Cursor / Claude / Copilot / AGY):\n");
+    console.log("\n📋 Universal MCP Configuration (Works on any machine with `continuum-mcp`):\n");
     console.log(JSON.stringify(mcpConfig, null, 2));
+    console.log("\n💡 Or run directly via relative path in the repo:\n");
+    console.log(JSON.stringify({
+      mcpServers: {
+        continuum: {
+          command: "node",
+          args: ["./packages/mcp-server/dist/index.js"],
+          env: { API_BASE_URL: API_URL },
+        },
+      },
+    }, null, 2));
     if (config) {
-      console.log(`\n💡 Your project_id: ${config.project_id}`);
+      console.log(`\n💡 Current project_id: ${config.project_id}`);
     }
   });
 
