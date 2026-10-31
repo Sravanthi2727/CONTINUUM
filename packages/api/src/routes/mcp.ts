@@ -312,6 +312,30 @@ const defaultHttpMcpServer = createMcpServer("global-http-session");
 defaultHttpMcpServer.connect(streamableHttpTransport).catch(console.error);
 
 router.all("/mcp", async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : (req.query.token as string);
+
+  // If no token, trigger RFC 9728 Discovery by responding with 401 and resource_metadata
+  if (!token) {
+    res.setHeader("WWW-Authenticate", 'Bearer resource_metadata="https://continuum-api-rkp4.onrender.com/.well-known/oauth-protected-resource"');
+    return res.status(401).json({
+      error: "unauthorized",
+      message: "Authentication required. Use OAuth 2.1 via /oauth/authorize",
+      resource_metadata: "https://continuum-api-rkp4.onrender.com/.well-known/oauth-protected-resource"
+    });
+  }
+
+  // Validate the Bearer token
+  let userId = "authenticated-user";
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    userId = decoded.userId;
+  } catch {
+    res.setHeader("WWW-Authenticate", 'Bearer error="invalid_token"');
+    return res.status(401).json({ error: "invalid_token", message: "Token expired or invalid" });
+  }
+
+  // Handle streamable HTTP request scoped to verified user
   await streamableHttpTransport.handleRequest(req, res, req.body);
 });
 

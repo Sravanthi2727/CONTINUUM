@@ -10,6 +10,7 @@ import eventsRouter from "./routes/events";
 import intelligenceRouter from "./routes/intelligence";
 import authRouter from "./routes/auth";
 import mcpRouter from "./routes/mcp";
+import oauthRouter from "./routes/oauth";
 
 const app = express();
 const httpServer = createServer(app);
@@ -30,6 +31,7 @@ app.use("/runs", runsRouter);
 app.use("/events", eventsRouter);
 app.use("/intelligence", intelligenceRouter);
 app.use("/auth", authRouter);
+app.use("/", oauthRouter);
 app.use("/", mcpRouter);
 
 async function startChangeStreamListener() {
