@@ -336,7 +336,14 @@ router.all("/mcp", async (req: Request, res: Response) => {
   }
 
   // Handle streamable HTTP request scoped to verified user
-  await streamableHttpTransport.handleRequest(req, res, req.body);
+  try {
+    await streamableHttpTransport.handleRequest(req, res, req.body);
+  } catch (err: any) {
+    console.error("[MCP ERROR]", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "mcp_transport_error", message: err.message, stack: err.stack });
+    }
+  }
 });
 
 // =========================================================================
