@@ -152,38 +152,24 @@ node packages/cli/dist/index.js link-agent
 
 ## 7. Model Context Protocol (MCP) Server
 
-Connect your AI agent (Cursor, Copilot, Claude Code, AGY, OpenCode) directly to the CONTINUUM cloud API.
+Connect your AI agent (Cursor, Copilot, Claude Code, AGY, OpenCode) directly via **remote URL (SSE)**.
+**No files, no paths, no cloning, and no installation required!**
 
-### Option A: Universal Binary (Recommended for any teammate)
-Once linked or installed via npm (`npm link` inside `packages/mcp-server`), your teammate doesn't need hardcoded file paths at all:
+### In Cursor / Claude Desktop / Copilot / AGY:
+
+Add this single URL block to your MCP config:
 
 ```json
 {
   "mcpServers": {
     "continuum": {
-      "command": "continuum-mcp",
-      "env": {
-        "API_BASE_URL": "https://continuum-api-rkp4.onrender.com"
-      }
+      "url": "https://continuum-api-rkp4.onrender.com/sse"
     }
   }
 }
 ```
 
-### Option B: Relative Workspace Path (Inside cloned repo)
-```json
-{
-  "mcpServers": {
-    "continuum": {
-      "command": "node",
-      "args": ["./packages/mcp-server/dist/index.js"],
-      "env": {
-        "API_BASE_URL": "https://continuum-api-rkp4.onrender.com"
-      }
-    }
-  }
-}
-```
+That is literally all anyone needs to connect from anywhere in the world!
 
 Exposed MCP Tools:
 - `getProjectHistory(project_id, limit)`: Provides cross-session historical context to AI agents.
