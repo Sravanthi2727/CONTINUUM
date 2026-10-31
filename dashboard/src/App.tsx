@@ -3,15 +3,16 @@ import { Link, Route, Routes } from 'react-router-dom'
 import { DemoControls } from './components/DemoControls'
 import { TopBar } from './components/TopBar'
 import { useSocket, type ConnectionStatus } from './hooks/useSocket'
+import { DocsPage } from './pages/DocsPage'
+import { HomePage } from './pages/HomePage'
+import { LoginPage } from './pages/LoginPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { RunDetailPage } from './pages/RunDetailPage'
 import { TimelinePage } from './pages/TimelinePage'
-import { LoginPage } from './pages/LoginPage'
 import type { Run, RunEvent } from './types'
 
-type RunHandler = (run: Run) => void
-type EventHandler = (evt: RunEvent) => void
-type ReconnectHandler = () => void
+type RunHandler   = (run: Run)       => void
+type EventHandler = (evt: RunEvent)  => void
 
 function dedupeById<T extends { _id: string }>(items: T[]): T[] {
   const map = new Map<string, T>()
@@ -21,19 +22,21 @@ function dedupeById<T extends { _id: string }>(items: T[]): T[] {
 
 export default function App() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('reconnecting')
-  const runUpsertHandlers = useRef<RunHandler[]>([])
-  const runUpdateHandlers = useRef<RunHandler[]>([])
+
+  const runUpsertHandlers  = useRef<RunHandler[]>([])
+  const runUpdateHandlers  = useRef<RunHandler[]>([])
   const eventCreateHandlers = useRef<EventHandler[]>([])
-  const reconnectHandlers = useRef<ReconnectHandler[]>([])
   const seenEvtIds = useRef<Set<string>>(new Set())
-  const runQueue = useRef<Run[]>([])
+
+  // ── Batched flush (80 ms window) so rapid socket bursts don't thrash React ──
+  const runQueue   = useRef<Run[]>([])
   const eventQueue = useRef<RunEvent[]>([])
   const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const flushQueues = useCallback(() => {
-    const runs = dedupeById(runQueue.current)
+    const runs   = dedupeById(runQueue.current)
     const events = dedupeById(eventQueue.current)
-    runQueue.current = []
+    runQueue.current   = []
     eventQueue.current = []
     for (const run of runs) {
       runUpsertHandlers.current.forEach(h => h(run))
@@ -54,62 +57,31 @@ export default function App() {
     }, 80)
   }, [flushQueues])
 
-  const handleRunCreated = useCallback((run: Run) => {
-    runQueue.current.push(run)
-    scheduleFlush()
-  }, [scheduleFlush])
-
-  const handleRunUpdated = useCallback((run: Run) => {
-    runQueue.current.push(run)
-    scheduleFlush()
-  }, [scheduleFlush])
-
-  const handleEventCreated = useCallback((evt: RunEvent) => {
-    eventQueue.current.push(evt)
-    scheduleFlush()
-  }, [scheduleFlush])
-
-  const handleReconnect = useCallback(() => {
-    reconnectHandlers.current.forEach(h => {
-      try {
-        h()
-      } catch {
-        // ignore reconnect handler error
-      }
-    })
-  }, [])
+  const handleRunCreated   = useCallback((run: Run)      => { runQueue.current.push(run);   scheduleFlush() }, [scheduleFlush])
+  const handleRunUpdated   = useCallback((run: Run)      => { runQueue.current.push(run);   scheduleFlush() }, [scheduleFlush])
+  const handleEventCreated = useCallback((evt: RunEvent) => { eventQueue.current.push(evt); scheduleFlush() }, [scheduleFlush])
 
   const { status } = useSocket({
-    onRunCreated: handleRunCreated,
-    onRunUpdated: handleRunUpdated,
+    onRunCreated:   handleRunCreated,
+    onRunUpdated:   handleRunUpdated,
     onEventCreated: handleEventCreated,
-    onReconnect: handleReconnect,
   })
 
   useEffect(() => { setConnectionStatus(status) }, [status])
 
+  // Relative timestamps tick every 30s
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 30_000)
     return () => clearInterval(id)
   }, [])
 
-  const registerRunUpsert = useCallback((handler: RunHandler) => {
-    runUpsertHandlers.current = [handler]
-  }, [])
+  // Page-level handler registration (one page active at a time)
+  const registerRunUpsert   = useCallback((h: RunHandler)   => { runUpsertHandlers.current   = [h] }, [])
+  const registerRunUpdate   = useCallback((h: RunHandler)   => { runUpdateHandlers.current   = [h] }, [])
+  const registerEventCreate = useCallback((h: EventHandler) => { eventCreateHandlers.current = [h] }, [])
 
-  const registerRunUpdate = useCallback((handler: RunHandler) => {
-    runUpdateHandlers.current = [handler]
-  }, [])
-
-  const registerEventCreate = useCallback((handler: EventHandler) => {
-    eventCreateHandlers.current = [handler]
-  }, [])
-
-  const registerReconnect = useCallback((handler: ReconnectHandler) => {
-    reconnectHandlers.current = [handler]
-  }, [])
-
+  // Periodic cleanup of seen IDs
   useEffect(() => {
     const id = setInterval(() => {
       if (seenEvtIds.current.size > 1000) seenEvtIds.current.clear()
@@ -121,21 +93,19 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <TopBar connectionStatus={connectionStatus} />
 
-      <div className="flex-1">
+      <div style={{ flex: 1 }}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<ProjectsPage onReconnect={registerReconnect} />} />
+          <Route path="/"                    element={<HomePage />} />
+          <Route path="/docs"                element={<DocsPage />} />
+          <Route path="/documentation"       element={<DocsPage />} />
+          <Route path="/login"               element={<LoginPage />} />
+          <Route path="/projects"            element={<ProjectsPage />} />
           <Route
             path="/projects/:projectId"
-            element={
-              <TimelinePage
-                onRunUpsert={registerRunUpsert}
-                onReconnect={registerReconnect}
-              />
-            }
+            element={<TimelinePage onRunUpsert={registerRunUpsert} />}
           />
           <Route
             path="/runs/:runId"
@@ -143,7 +113,6 @@ export default function App() {
               <RunDetailPage
                 onRunUpdate={registerRunUpdate}
                 onEventCreate={registerEventCreate}
-                onReconnect={registerReconnect}
               />
             }
           />
@@ -151,14 +120,11 @@ export default function App() {
             path="*"
             element={
               <div style={{ padding: 'var(--sp-12)', textAlign: 'center' }}>
-                <p
-                  className="font-display"
-                  style={{ fontWeight: 700, fontSize: 'var(--text-2xl)', color: 'var(--fossil)' }}
-                >
-                  Layer not found
+                <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--text-2xl)', color: 'var(--fossil)' }}>
+                  404 — Layer not found
                 </p>
                 <Link to="/" style={{ fontSize: 'var(--text-sm)', color: 'var(--fossil-dim)', marginTop: 12, display: 'block' }}>
-                  Back to projects
+                  Back to home
                 </Link>
               </div>
             }
