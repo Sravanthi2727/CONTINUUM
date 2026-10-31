@@ -3,19 +3,23 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "api",
+    "cli",
+    "dashboard",
+    "intelligence",
+    "mcp-server",
+    "seed"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "build:intelligence": "npm run build --workspace=packages/intelligence",
-    "build:api": "npm run build --workspace=packages/api",
-    "build:mcp": "npm run build --workspace=packages/mcp-server",
-    "build:cli": "npm run build --workspace=packages/cli",
-    "build:dashboard": "npm run build --workspace=packages/dashboard",
-    "dev:api": "npm run dev --workspace=packages/api",
-    "dev:dashboard": "npm run dev --workspace=packages/dashboard",
-    "start:api": "npm run start --workspace=packages/api",
-    "start:mcp": "npm run start --workspace=packages/mcp-server",
-    "seed": "npm run seed --workspace=packages/seed"
+    "build": "npm run build:intelligence && npm run build:api && npm run build:mcp && npm run build:cli && npm run build:dashboard",
+    "build:intelligence": "npm run build --workspace=intelligence",
+    "build:api": "npm run build --workspace=api",
+    "build:mcp": "npm run build --workspace=mcp-server",
+    "build:cli": "npm run build --workspace=cli",
+    "build:dashboard": "npm run build --workspace=dashboard",
+    "dev:api": "npm run dev --workspace=api",
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "start:api": "npm run start --workspace=api",
+    "seed": "npm run seed --workspace=seed"
   }
 }
