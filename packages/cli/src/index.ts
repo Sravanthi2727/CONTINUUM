@@ -200,19 +200,24 @@ program
 program
   .command("link-agent")
   .description("Print the MCP server config snippet for your AI agent (Cursor / Claude Code / Copilot)")
-  .action(() => {
+  .option("-t, --token <token>", "Your user JWT auth token or User ID to scope agent actions")
+  .action((opts) => {
     const config = loadConfig();
+    const tokenStr = opts.token ? `?token=${opts.token}` : "";
     const mcpConfig = {
       mcpServers: {
         continuum: {
-          url: "https://continuum-api-rkp4.onrender.com/sse",
+          url: `https://continuum-api-rkp4.onrender.com/sse${tokenStr}`,
         },
       },
     };
-    console.log("\n📋 Remote SSE MCP Configuration (No file paths or cloning needed!):\n");
+    console.log("\n🔒 User-Authenticated MCP Configuration (Scopes data to YOUR account):\n");
     console.log(JSON.stringify(mcpConfig, null, 2));
+    if (!opts.token) {
+      console.log("\n💡 Tip: Provide your token with: cnt link-agent -t <your_jwt_token>");
+    }
     if (config) {
-      console.log(`\n💡 Current project_id: ${config.project_id}`);
+      console.log(`💡 Current project_id: ${config.project_id}`);
     }
   });
 

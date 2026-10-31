@@ -152,24 +152,23 @@ node packages/cli/dist/index.js link-agent
 
 ## 7. Model Context Protocol (MCP) Server
 
-Connect your AI agent (Cursor, Copilot, Claude Code, AGY, OpenCode) directly via **remote URL (SSE)**.
-**No files, no paths, no cloning, and no installation required!**
+Connect your AI agent (Cursor, Claude Desktop, Copilot, AGY) securely with **User-Scoped Isolation**.
 
-### In Cursor / Claude Desktop / Copilot / AGY:
-
-Add this single URL block to your MCP config:
+When you log in or register on the dashboard (`https://continuum-jrxa.onrender.com`), you get a personal auth token. Pass this token in the MCP URL so CONTINUUM only exposes **your** projects and logs to your Claude/Cursor session:
 
 ```json
 {
   "mcpServers": {
     "continuum": {
-      "url": "https://continuum-api-rkp4.onrender.com/sse"
+      "url": "https://continuum-api-rkp4.onrender.com/sse?token=<YOUR_AUTH_TOKEN>"
     }
   }
 }
 ```
 
-That is literally all anyone needs to connect from anywhere in the world!
+> **Security & Privacy Guarantee:**
+> - When your Claude calls `getProjectHistory(project_id)`, the server strictly verifies that `project.owner_id == your_user_id`. If someone else tries to read your project, it rejects with `401 / Access Denied`.
+> - All agent tool events submitted via `submitRunEvent` are automatically tagged with `submitted_by_user_id`.
 
 Exposed MCP Tools:
 - `getProjectHistory(project_id, limit)`: Provides cross-session historical context to AI agents.
