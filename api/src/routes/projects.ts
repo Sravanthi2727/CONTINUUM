@@ -72,4 +72,42 @@ router.post("/", optionalAuthMiddleware, async (req: AuthRequest, res: Response)
   }
 });
 
+// DELETE /projects/:id
+router.delete("/:id", optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const db = (await import("../db/mongo")).getDB();
+    const projectId = req.params.id;
+
+    // Delete project
+    const projRes = await db.collection("projects").deleteOne({ _id: projectId } as any);
+    if (projRes.deletedCount === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // Find and cascade delete runs, events, and findings
+    const runs = await db.collection("runs").find({ project_id: projectId }).toArray();
+    const runIds = runs.map((r: any) => r._id);
+
+    await db.collection("runs").deleteMany({ project_id: projectId });
+    if (runIds.length > 0) {
+      await db.collection("events").deleteMany({ run_id: { $in: runIds } });
+      await db.collection("findings").deleteMany({
+        $or: [
+          { project_id: projectId },
+          { "details.run_id": { $in: runIds } },
+          { "details.baseline_run_id": { $in: runIds } },
+        ],
+      });
+      await db.collection("verifications").deleteMany({ run_id: { $in: runIds } });
+    }
+
+    res.json({
+      message: "Project and associated data successfully deleted",
+      deleted_runs: runIds.length,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

@@ -147,4 +147,32 @@ router.post("/:id", async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /runs/:id
+router.delete("/:id", async (req: Request, res: Response) => {
+  try {
+    const { getDB } = await import("../db/mongo");
+    const db = getDB();
+    const runId = req.params.id;
+
+    const runRes = await db.collection("runs").deleteOne({ _id: runId } as any);
+    if (runRes.deletedCount === 0) {
+      return res.status(404).json({ error: "Run not found" });
+    }
+
+    await db.collection("events").deleteMany({ run_id: runId });
+    await db.collection("findings").deleteMany({
+      $or: [
+        { "details.run_id": runId },
+        { "details.baseline_run_id": runId },
+        { run_id: runId },
+      ],
+    });
+    await db.collection("verifications").deleteMany({ run_id: runId });
+
+    res.json({ message: "Run and events deleted successfully", run_id: runId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
