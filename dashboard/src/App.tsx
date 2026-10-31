@@ -6,6 +6,7 @@ import { useSocket, type ConnectionStatus } from './hooks/useSocket'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { RunDetailPage } from './pages/RunDetailPage'
 import { TimelinePage } from './pages/TimelinePage'
+import { LoginPage } from './pages/LoginPage'
 import type { Run, RunEvent } from './types'
 
 type RunHandler = (run: Run) => void
@@ -125,7 +126,7 @@ export default function App() {
 
       <div className="flex-1">
         <Routes>
-          <Route path="/" element={<ProjectsPage onReconnect={registerReconnect} />} />
+          <Route path="/login" element={<LoginPage />} />`r`n          <Route path="/" element={<ProjectsPage onReconnect={registerReconnect} />} />
           <Route
             path="/projects/:projectId"
             element={
