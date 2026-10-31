@@ -12,6 +12,24 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
+export interface MockUserRecord {
+  _id: string
+  name: string
+  email: string
+  password: string
+  created_at: string
+}
+
+const mockUsers: MockUserRecord[] = [
+  {
+    _id: 'usr_demo_01',
+    name: 'Demo Engineer',
+    email: 'demo@continuum.dev',
+    password: 'password123',
+    created_at: '2026-03-01T00:00:00.000Z',
+  },
+]
+
 const projects: Project[] = clone(MOCK_PROJECTS)
 let runs: Run[] = clone(MOCK_RUNS)
 const eventsByRun: Record<string, RunEvent[]> = clone(MOCK_EVENTS_MAP)
@@ -158,5 +176,86 @@ export const mockStore = {
     }
     this.upsertRun(run)
     return { ok: true, status: 201, body: run }
+  },
+
+  login(email: string, password: string): { ok: boolean; status: number; body: unknown } {
+    const user = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase())
+    if (!user || user.password !== password) {
+      return {
+        ok: false,
+        status: 401,
+        body: { error: 'Invalid email or password' },
+      }
+    }
+    const token = `mock_jwt_${user._id}_${Date.now()}`
+    return {
+      ok: true,
+      status: 200,
+      body: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+        },
+      },
+    }
+  },
+
+  register(email: string, password: string, name?: string): { ok: boolean; status: number; body: unknown } {
+    if (!email || !password) {
+      return {
+        ok: false,
+        status: 400,
+        body: { error: 'Email and password are required' },
+      }
+    }
+    const existing = mockUsers.find(u => u.email.toLowerCase() === email.toLowerCase())
+    if (existing) {
+      return {
+        ok: false,
+        status: 409,
+        body: { error: 'User already exists with this email' },
+      }
+    }
+    const newUser: MockUserRecord = {
+      _id: `usr_${Date.now()}`,
+      name: name?.trim() || email.split('@')[0],
+      email: email.trim(),
+      password,
+      created_at: new Date().toISOString(),
+    }
+    mockUsers.push(newUser)
+    const token = `mock_jwt_${newUser._id}_${Date.now()}`
+    return {
+      ok: true,
+      status: 201,
+      body: {
+        token,
+        user: {
+          id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+        },
+      },
+    }
+  },
+
+  getUser(userId: string): { ok: boolean; status: number; body: unknown } {
+    const user = mockUsers.find(u => u._id === userId)
+    if (!user) {
+      return { ok: false, status: 404, body: { error: 'User not found' } }
+    }
+    return {
+      ok: true,
+      status: 200,
+      body: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+        },
+      },
+    }
   },
 }

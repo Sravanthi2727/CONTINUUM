@@ -1,4 +1,5 @@
 import { API_URL } from '../config'
+import type { User } from '../types'
 
 export class ApiError extends Error {
   status: number
@@ -12,10 +13,60 @@ export class ApiError extends Error {
   }
 }
 
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem('continuum_token')
+  } catch {
+    return null
+  }
+}
+
+export function getAuthUser(): User | null {
+  try {
+    const raw = localStorage.getItem('continuum_user')
+    return raw ? (JSON.parse(raw) as User) : null
+  } catch {
+    return null
+  }
+}
+
+export function setAuthSession(token: string, user: User): void {
+  try {
+    localStorage.setItem('continuum_token', token)
+    localStorage.setItem('continuum_user', JSON.stringify(user))
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('continuum_auth_change'))
+    }
+  } catch {
+    // ignore local storage restrictions
+  }
+}
+
+export function clearAuthSession(): void {
+  try {
+    localStorage.removeItem('continuum_token')
+    localStorage.removeItem('continuum_user')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('continuum_auth_change'))
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('continuum_token') ? { Authorization: 'Bearer ' + localStorage.getItem('continuum_token')} : {}), ...options?.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...options?.headers,
+    },
   })
 
   if (!res.ok) {
@@ -42,7 +93,10 @@ export async function apiPostRaw(
 }> {
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(typeof window !== 'undefined' && localStorage.getItem('continuum_token') ? { Authorization: 'Bearer ' + localStorage.getItem('continuum_token') } : {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const resBody = await res.json().catch(() => ({}))

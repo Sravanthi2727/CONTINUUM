@@ -6,7 +6,7 @@
  */
 
 import { API_URL, USE_MOCKS } from '../config'
-import type { Divergence, Finding, Project, Run, RunEvent, SimilarFailure } from '../types'
+import type { AuthResponse, Divergence, Finding, Project, Run, RunEvent, SimilarFailure, User } from '../types'
 import { apiFetch } from './client'
 import { mockStore } from './mocks/store'
 
@@ -348,4 +348,89 @@ export async function postDemoScenario(scenario: string): Promise<DemoResult> {
   })
   const resBody = await res.json().catch(() => ({}))
   return { ok: res.ok, status: res.status, body: resBody }
+}
+
+// ─── Authentication ───────────────────────────────────────────────────────────
+
+export function normalizeUser(raw: unknown): User {
+  if (!raw || typeof raw !== 'object') {
+    return { id: 'unknown_user', email: '', name: 'Anonymous' }
+  }
+  const obj = raw as Record<string, unknown>
+  const id = obj.id ?? obj._id ?? 'unknown_user'
+  const email = typeof obj.email === 'string' ? obj.email : ''
+  const name = typeof obj.name === 'string' ? obj.name : email.split('@')[0] || 'User'
+  return {
+    id: String(id),
+    email,
+    name,
+  }
+}
+
+export async function authLogin(email: string, password: string): Promise<AuthResponse> {
+  if (USE_MOCKS) {
+    const res = mockStore.login(email, password)
+    if (!res.ok) {
+      const errBody = res.body as { error?: string }
+      throw new Error(errBody?.error || 'Invalid email or password')
+    }
+    const body = res.body as { token: string; user: unknown }
+    return delay({
+      token: body.token,
+      user: normalizeUser(body.user),
+    })
+  }
+
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.error || data.message || `Login failed (HTTP ${res.status})`)
+  }
+  if (!data.token) {
+    throw new Error('Server returned no token')
+  }
+  return {
+    token: data.token,
+    user: normalizeUser(data.user),
+  }
+}
+
+export async function authRegister(
+  email: string,
+  password: string,
+  name?: string,
+): Promise<AuthResponse> {
+  if (USE_MOCKS) {
+    const res = mockStore.register(email, password, name)
+    if (!res.ok) {
+      const errBody = res.body as { error?: string }
+      throw new Error(errBody?.error || 'Registration failed')
+    }
+    const body = res.body as { token: string; user: unknown }
+    return delay({
+      token: body.token,
+      user: normalizeUser(body.user),
+    })
+  }
+
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, name }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data.error || data.message || `Registration failed (HTTP ${res.status})`)
+  }
+  if (!data.token) {
+    throw new Error('Server returned no token')
+  }
+  return {
+    token: data.token,
+    user: normalizeUser(data.user),
+  }
 }

@@ -126,7 +126,8 @@ export default function App() {
 
       <div className="flex-1">
         <Routes>
-          <Route path="/login" element={<LoginPage />} />`r`n          <Route path="/" element={<ProjectsPage onReconnect={registerReconnect} />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<ProjectsPage onReconnect={registerReconnect} />} />
           <Route
             path="/projects/:projectId"
             element={

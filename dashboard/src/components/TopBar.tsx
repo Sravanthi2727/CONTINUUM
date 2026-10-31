@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { clearAuthSession, getAuthUser } from '../api/client'
 import type { ConnectionStatus } from '../hooks/useSocket'
+import type { User } from '../types'
 import { ConnectionIndicator } from './ConnectionIndicator'
 
 interface Props {
@@ -8,21 +10,22 @@ interface Props {
 }
 
 export function TopBar({ connectionStatus }: Props) {
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null)
+  const [user, setUser] = useState<User | null>(() => getAuthUser())
+  const navigate = useNavigate()
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('continuum_user')
-      if (stored) setUser(JSON.parse(stored))
-    } catch {
-      // ignore
+    const syncUser = () => setUser(getAuthUser())
+    window.addEventListener('continuum_auth_change', syncUser)
+    window.addEventListener('storage', syncUser)
+    return () => {
+      window.removeEventListener('continuum_auth_change', syncUser)
+      window.removeEventListener('storage', syncUser)
     }
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('continuum_token')
-    localStorage.removeItem('continuum_user')
-    window.location.reload()
+    clearAuthSession()
+    navigate('/login')
   }
 
   return (

@@ -73,3 +73,14 @@ export interface Finding {
   details: Record<string, unknown>
   created_at: string
 }
+
+export interface User {
+  id: string
+  email: string
+  name: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+}
