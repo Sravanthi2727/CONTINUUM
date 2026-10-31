@@ -64,6 +64,12 @@ function createMcpServer(clientSessionId: string): Server {
           description: "Check the current authenticated user identity and session status.",
           inputSchema: { type: "object", properties: {} },
         },
+        // 2b. List Projects
+        {
+          name: "listProjects",
+          description: "List all CONTINUUM projects belonging to your account. Returns their project IDs, names, and creation dates so you don't have to look them up manually.",
+          inputSchema: { type: "object", properties: {} },
+        },
         // 3. Project History
         {
           name: "getProjectHistory",
@@ -225,6 +231,27 @@ function createMcpServer(clientSessionId: string): Server {
           };
         }
 
+        // --- LIST PROJECTS TOOL ---
+        case "listProjects": {
+          const session = authenticatedSessions.get(clientSessionId);
+          const filter = {};
+          if (session && session.userId) {
+            (filter as any).$or = [{ owner_id: session.userId }, { owner_id: "demo" }];
+          }
+          const projects = await db.collection("projects").find(filter).sort({ created_at: -1 }).toArray();
+          const listText = projects.map((p: any) => "- " + p.name + ": " + p._id + " (Owner: " + p.owner_id + ")").join("\n");
+          return {
+            content: [
+              {
+                type: "text",
+                text: projects.length > 0
+                  ? "Available Projects in your account:\n\n" + listText + "\n\nYou can now use any of these project IDs with getProjectHistory."
+                  : "No projects found. Run cnt init to register a project.",
+              },
+            ],
+          };
+        }
+
         // --- GET PROJECT HISTORY ---
         case "getProjectHistory": {
           const { project_id, limit } = args as { project_id: string; limit?: number };
@@ -349,6 +376,14 @@ router.all("/mcp", async (req: Request, res: Response) => {
   try {
     const sessionId = (req.headers["mcp-session-id"] as string) || ("session-" + Math.random().toString(36).substring(2, 9));
   const transport = getOrCreateTransport(sessionId);
+  if (!authenticatedSessions.has(sessionId)) {
+    const dbUser = await getDB().collection("users").findOne({ _id: userId } as any);
+    authenticatedSessions.set(sessionId, {
+      userId,
+      email: dbUser?.email || "user@continuum.local",
+      name: dbUser?.name || "Developer",
+    });
+  }
   await transport.handleRequest(req, res, req.body);
   } catch (err: any) {
     console.error("[MCP ERROR]", err);
