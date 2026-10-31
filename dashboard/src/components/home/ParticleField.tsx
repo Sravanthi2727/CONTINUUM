@@ -400,7 +400,7 @@ export const ParticleField = forwardRef<ParticleFieldHandle, ParticleFieldProps>
         state.rafId = requestAnimationFrame(tick)
       }
 
-      state.rafId = requestAnimationFrame(tick)
+    //state.rafId = requestAnimationFrame(tick)
 
       const handleMouseMove = (e: MouseEvent) => {
         const state = animRef.current
@@ -434,7 +434,7 @@ export const ParticleField = forwardRef<ParticleFieldHandle, ParticleFieldProps>
       }
 
       window.addEventListener('mousemove', handleMouseMove, { passive: true })
-      document.body.addEventListener('mouseleave', handleMouseLeave)
+      document.body.addEventListener('mouseleave', handleMouseLeave, { passive: true })
 
       const handleVisibilityChange = () => {
         const state = animRef.current
@@ -500,7 +500,7 @@ export const ParticleField = forwardRef<ParticleFieldHandle, ParticleFieldProps>
         }, 150)
       }
 
-      window.addEventListener('resize', handleResize)
+      window.addEventListener('resize', handleResize, { passive: true })
 
       return () => {
         const state = animRef.current

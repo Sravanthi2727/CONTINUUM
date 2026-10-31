@@ -61,7 +61,7 @@ export function CursorRing() {
     }
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true })
-    document.body.addEventListener('mouseleave', handleMouseLeave)
+    document.body.addEventListener('mouseleave', handleMouseLeave, { passive: true })
     rafId = requestAnimationFrame(loop)
 
     return () => {

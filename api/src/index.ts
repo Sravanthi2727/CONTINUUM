@@ -16,12 +16,17 @@ const app = express();
 const httpServer = createServer(app);
 const io = new SocketServer(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "*",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
 
-app.use(cors({ origin: process.env.CLIENT_URL || "*" }));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ status: "ok", time: new Date() }));

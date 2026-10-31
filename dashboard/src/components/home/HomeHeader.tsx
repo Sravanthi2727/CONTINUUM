@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { clearAuthSession, getAuthUser } from '../../api/client'
 import type { ConnectionStatus } from '../../hooks/useSocket'
+import type { User } from '../../types'
 
 interface HomeHeaderProps {
   connectionStatus: ConnectionStatus
@@ -8,7 +10,23 @@ interface HomeHeaderProps {
 
 export function HomeHeader({ connectionStatus }: HomeHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(() => getAuthUser())
   const isConnected = connectionStatus === 'connected'
+
+  useEffect(() => {
+    const syncUser = () => setUser(getAuthUser())
+    window.addEventListener('continuum_auth_change', syncUser)
+    window.addEventListener('storage', syncUser)
+    return () => {
+      window.removeEventListener('continuum_auth_change', syncUser)
+      window.removeEventListener('storage', syncUser)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    clearAuthSession()
+    setUser(null)
+  }
 
   const scrollToHowItWorks = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -169,6 +187,76 @@ export function HomeHeader({ connectionStatus }: HomeHeaderProps) {
           How it works
         </a>
 
+        {/* User / Auth status */}
+        {user ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', paddingLeft: 'var(--sp-2)', borderLeft: '1px solid rgba(232, 224, 210, 0.12)' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--lichen)',
+                background: 'rgba(169, 194, 122, 0.1)',
+                border: '1px solid rgba(169, 194, 122, 0.25)',
+                padding: '2px 8px',
+                borderRadius: 3,
+                fontWeight: 600,
+              }}
+            >
+              {user.name}
+            </span>
+            <button
+              onClick={handleLogout}
+              type="button"
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(232, 224, 210, 0.15)',
+                color: 'var(--fossil-dim)',
+                fontSize: 'var(--text-xs)',
+                padding: '2px 8px',
+                borderRadius: 3,
+                cursor: 'pointer',
+                transition: 'color 0.15s, border-color 0.15s',
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.color = 'var(--fault)'
+                e.currentTarget.style.borderColor = 'var(--fault)'
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.color = 'var(--fossil-dim)'
+                e.currentTarget.style.borderColor = 'rgba(232, 224, 210, 0.15)'
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            style={{
+              color: 'var(--saffron)',
+              fontSize: 'var(--text-xs)',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              textDecoration: 'none',
+              border: '1px solid var(--saffron)',
+              padding: '3px 9px',
+              borderRadius: 3,
+              letterSpacing: '0.02em',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.background = 'var(--saffron)'
+              e.currentTarget.style.color = 'var(--ink)'
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = 'var(--saffron)'
+            }}
+          >
+            SIGN IN
+          </Link>
+        )}
+
         {/* Live Indicator */}
         <div
           style={{
@@ -264,6 +352,59 @@ export function HomeHeader({ connectionStatus }: HomeHeaderProps) {
           >
             How it works
           </a>
+
+          {/* Mobile User / Auth Status */}
+          {user ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: 'var(--sp-2)',
+                borderTop: '1px solid rgba(232, 224, 210, 0.08)',
+              }}
+            >
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--lichen)', fontFamily: 'var(--font-mono)' }}>
+                {user.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  handleLogout()
+                  setMobileMenuOpen(false)
+                }}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--fault)',
+                  color: 'var(--fault)',
+                  fontSize: 'var(--text-xs)',
+                  padding: '3px 8px',
+                  borderRadius: 3,
+                  cursor: 'pointer',
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                color: 'var(--saffron)',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 700,
+                textAlign: 'center',
+                border: '1px solid var(--saffron)',
+                padding: '6px',
+                borderRadius: 3,
+                textDecoration: 'none',
+              }}
+            >
+              SIGN IN
+            </Link>
+          )}
+
           <div
             style={{
               paddingTop: 'var(--sp-2)',

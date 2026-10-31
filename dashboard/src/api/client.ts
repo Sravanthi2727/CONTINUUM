@@ -60,14 +60,30 @@ function authHeaders(): Record<string, string> {
 }
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...options?.headers,
-    },
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+        ...options?.headers,
+      },
+    })
+  } catch (fetchErr) {
+    if (path.startsWith('/') && API_URL.startsWith('http')) {
+      res = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+          ...options?.headers,
+        },
+      })
+    } else {
+      throw fetchErr
+    }
+  }
 
   if (!res.ok) {
     let body: { error?: string; message?: string; details?: unknown } = {}
@@ -91,14 +107,26 @@ export async function apiPostRaw(
   status: number
   body: unknown
 }> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  } catch {
+    res = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  }
   const resBody = await res.json().catch(() => ({}))
   return { ok: res.ok, status: res.status, body: resBody }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { DemoControls } from './components/DemoControls'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { TopBar } from './components/TopBar'
 import { useSocket, type ConnectionStatus } from './hooks/useSocket'
 import { DocsPage } from './pages/DocsPage'
@@ -21,8 +22,6 @@ function dedupeById<T extends { _id: string }>(items: T[]): T[] {
 }
 
 export default function App() {
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('reconnecting')
-
   const runUpsertHandlers  = useRef<RunHandler[]>([])
   const runUpdateHandlers  = useRef<RunHandler[]>([])
   const eventCreateHandlers = useRef<EventHandler[]>([])
@@ -61,13 +60,11 @@ export default function App() {
   const handleRunUpdated   = useCallback((run: Run)      => { runQueue.current.push(run);   scheduleFlush() }, [scheduleFlush])
   const handleEventCreated = useCallback((evt: RunEvent) => { eventQueue.current.push(evt); scheduleFlush() }, [scheduleFlush])
 
-  const { status } = useSocket({
+  const { status: connectionStatus } = useSocket({
     onRunCreated:   handleRunCreated,
     onRunUpdated:   handleRunUpdated,
     onEventCreated: handleEventCreated,
   })
-
-  useEffect(() => { setConnectionStatus(status) }, [status])
 
   // Relative timestamps tick every 30s
   const [, setTick] = useState(0)
@@ -101,7 +98,14 @@ export default function App() {
 
       <div style={{ flex: 1 }}>
         <Routes>
-          <Route path="/"                    element={<HomePage connectionStatus={connectionStatus} />} />
+          <Route
+            path="/"
+            element={
+              <ErrorBoundary fallbackTitle="Error loading Homepage">
+                <HomePage connectionStatus={connectionStatus} />
+              </ErrorBoundary>
+            }
+          />
           <Route path="/docs"                element={<DocsPage />} />
           <Route path="/documentation"       element={<DocsPage />} />
           <Route path="/login"               element={<LoginPage />} />
