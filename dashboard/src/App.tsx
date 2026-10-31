@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, Route, Routes } from 'react-router-dom'
+import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { DemoControls } from './components/DemoControls'
 import { TopBar } from './components/TopBar'
 import { useSocket, type ConnectionStatus } from './hooks/useSocket'
@@ -92,13 +92,16 @@ export default function App() {
     }
   }, [])
 
+  const { pathname } = useLocation()
+  const isHomePage = pathname === '/'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <TopBar connectionStatus={connectionStatus} />
+      {!isHomePage && <TopBar connectionStatus={connectionStatus} />}
 
       <div style={{ flex: 1 }}>
         <Routes>
-          <Route path="/"                    element={<HomePage />} />
+          <Route path="/"                    element={<HomePage connectionStatus={connectionStatus} />} />
           <Route path="/docs"                element={<DocsPage />} />
           <Route path="/documentation"       element={<DocsPage />} />
           <Route path="/login"               element={<LoginPage />} />

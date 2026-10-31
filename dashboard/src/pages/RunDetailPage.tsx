@@ -192,7 +192,7 @@ export function RunDetailPage({ onRunUpdate, onEventCreate, onReconnect }: Props
     <main style={{ maxWidth: 860, margin: '0 auto', padding: 'var(--sp-8) var(--sp-6)' }}>
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" style={{ marginBottom: 'var(--sp-5)' }}>
-        <Link to="/" style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)' }}>
+        <Link to="/projects" style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)' }}>
           Projects
         </Link>
         <span aria-hidden style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)', margin: '0 6px' }}>

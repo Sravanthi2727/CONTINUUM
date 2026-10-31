@@ -83,6 +83,21 @@ export function TopBar({ connectionStatus }: Props) {
         {/* Nav links */}
         <nav aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-5)' }}>
           <Link
+            to="/"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 'var(--text-xs)',
+              color: pathname === '/' ? 'var(--saffron)' : 'var(--fossil-dim)',
+              textDecoration: 'none',
+              fontWeight: pathname === '/' ? 700 : 500,
+              letterSpacing: '0.02em',
+              transition: 'color 0.15s',
+            }}
+          >
+            Home
+          </Link>
+
+          <Link
             to="/projects"
             style={{
               fontFamily: 'var(--font-body)',

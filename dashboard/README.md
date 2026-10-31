@@ -6,6 +6,29 @@ The visual layer for CONTINUUM — a developer tool for UNCHARTED 2026 (Track 3)
 
 ---
 
+## Routes & Pages
+
+- `/`: Interactive Homepage featuring Chladni standing-wave particle physics, layer shuffling, and fault-line fracturing.
+- `/projects`: Projects list with mini strata strips.
+- `/projects/:projectId`: Project timeline showing chronological strata bands.
+- `/runs/:runId`: Run detail with verdict stamp, event sequence, forked divergence track, depth markers, and flaky vs regression analysis.
+- `/docs`: System documentation and user manual covering the CNT CLI and MCP integrations.
+- `/login`: Authentication and 1-click demo login.
+
+---
+
+## Homepage & Chladni Particle Physics
+
+The hero background uses an interactive Canvas 2D simulation inspired by Ernst Chladni's vibrating resonance plate experiments (written from scratch, zero external animation libraries). Particles are driven by standing-wave nodal fields $u(x,y) = \cos(n\pi x)\cos(m\pi y) - \cos(m\pi x)\cos(n\pi y)$ where jitter decays to zero on nodal lines. 
+
+Key interactions:
+- **Reshuffle the layers**: Morphs $(n, m)$ eigenmodes smoothly using parameter lerping.
+- **Break a layer**: Spawns a fracture burst in fault pink (`#F0457F`) along a nodal crack, which gradually heals and settles back into strata lines.
+- **Mouse repulsion**: Displaces particles dynamically with velocity-weighted inverse-distance falloff.
+- **Accessibility**: Automatically falls back to a single static settled draw when `prefers-reduced-motion` is enabled.
+
+---
+
 ## Setup
 
 ```bash

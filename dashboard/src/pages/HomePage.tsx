@@ -1,514 +1,914 @@
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CursorRing } from '../components/home/CursorRing'
+import { HomeHeader } from '../components/home/HomeHeader'
+import { ParticleField, type ParticleFieldHandle } from '../components/home/ParticleField'
+import { Reveal, StaggerWords } from '../components/home/Reveal'
+import { RollingCounter } from '../components/home/RollingCounter'
+import { RotatingBadge } from '../components/home/RotatingBadge'
+import { ScrollIndicators } from '../components/home/ScrollIndicators'
+import { DEMO_VIDEO_URL, REPO_URL, TEAM_NAME } from '../config'
+import type { ConnectionStatus } from '../hooks/useSocket'
 
-// ─── Feature entry ────────────────────────────────────────────────────────────
-
-interface Feature {
-  num: string
-  title: string
-  body: string
-  tag?: string
+interface HomePageProps {
+  connectionStatus?: ConnectionStatus
 }
 
-const FEATURES: Feature[] = [
-  {
-    num: '01',
-    title: 'Every run. Every agent. One memory.',
-    body: 'CONTINUUM captures every build, test, and deploy — whether you typed it or an AI agent did — into MongoDB. Human and agent runs share the same timeline, the same history, the same truth.',
-    tag: 'Core',
-  },
-  {
-    num: '02',
-    title: 'Live timeline as strata bands.',
-    body: 'Runs stack like sediment layers, newest first. Band height reflects duration. Failed runs fracture at the top edge. Source is colour-coded on the left rail — sandstone for human, glacier for agent. New runs push in live over a Socket.IO connection.',
-    tag: 'Timeline',
-  },
-  {
-    num: '03',
-    title: 'Why it failed — not just that it failed.',
-    body: 'The divergence panel draws a forked track: a shared spine that splits at the first mismatched step. One path in lichen green for the last good run, one in fault pink for this one. The fork point carries the explanation text.',
-    tag: 'Run detail',
-  },
-  {
-    num: '04',
-    title: 'A verdict stamp, not a status dot.',
-    body: 'Safe, Risky, or Blocked. Rendered as a large rotated stamp in the display font — the one element you remember after a three-second glance. It updates live when a running run finishes.',
-    tag: 'Run detail',
-  },
-  {
-    num: '05',
-    title: 'Similar failures as a depth scale.',
-    body: 'Past failures positioned on a vertical ruler proportional to their vector similarity — 91%, 84%, 72%. Closer to the top means closer match. No percentage bars, no tables. Just depth and proximity.',
-    tag: 'Analysis',
-  },
-  {
-    num: '06',
-    title: 'Flaky vs regression. One clear verdict.',
-    body: 'The analysis pipeline groups test failures by run. A test that fails 4 out of 10 times is flaky. A test that never failed before is a regression. The panel shows the verdict and the rate.',
-    tag: 'Analysis',
-  },
-  {
-    num: '07',
-    title: 'Dedup enforced at the DB, shown in the UI.',
-    body: 'Send an event twice — MongoDB\'s unique index rejects the second write instantly. The demo drawer fires both the happy path and the duplicate on stage, and the toast reads exactly why it was blocked.',
-    tag: 'Demo',
-  },
-  {
-    num: '08',
-    title: 'Schema validation with a readable error.',
-    body: 'Send an event missing run_id and the $jsonSchema validator catches it before any application code runs. The toast surfaces the field name and the server\'s error details — no vague "bad request".',
-    tag: 'Demo',
-  },
-  {
-    num: '09',
-    title: 'Mock-first. Real API is one env change.',
-    body: 'VITE_USE_MOCKS=true runs the whole dashboard on local mock data and a simulated socket. Flip it to false, point VITE_API_URL at the backend, and nothing else changes.',
-    tag: 'Architecture',
-  },
-  {
-    num: '10',
-    title: 'Demo controls on stage.',
-    body: 'A collapsible drawer in the bottom right. Five buttons: start an agent run, start a human run, trigger divergence, send a duplicate, send a malformed event. No terminal required during the presentation.',
-    tag: 'Demo',
-  },
-]
+export function HomePage({ connectionStatus = 'connected' }: HomePageProps) {
+  const particleRef = useRef<ParticleFieldHandle | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-const TAG_COLORS: Record<string, string> = {
-  Core:         'var(--fossil-dim)',
-  Timeline:     'var(--lichen)',
-  'Run detail': 'var(--saffron)',
-  Analysis:     'var(--glacier)',
-  Demo:         'var(--fault)',
-  Architecture: 'var(--sandstone)',
-}
+  const showToast = (msg: string) => {
+    if (toastTimeout.current) clearTimeout(toastTimeout.current)
+    setToastMessage(msg)
+    toastTimeout.current = setTimeout(() => setToastMessage(null), 2400)
+  }
 
-// ─── Animated strata strip ────────────────────────────────────────────────────
+  const handleShuffle = () => {
+    particleRef.current?.shuffle()
+    showToast('Layers reshuffled to a new standing wave')
+  }
 
-function HeroStrataStrip() {
-  const slices = [
-    { color: 'var(--lichen)',  w: '18%' },
-    { color: 'var(--lichen)',  w: '8%'  },
-    { color: 'var(--fault)',   w: '14%' },
-    { color: 'var(--lichen)',  w: '22%' },
-    { color: 'var(--saffron)', w: '10%' },
-    { color: 'var(--lichen)',  w: '16%' },
-    { color: 'var(--fault)',   w: '12%' },
-  ]
+  const handleBreak = () => {
+    particleRef.current?.breakLayer()
+    showToast('Fault fracture triggered along nodal line')
+  }
 
   return (
     <div
-      aria-hidden
       style={{
-        display: 'flex',
-        width: '100%',
-        height: 6,
-        gap: 2,
-        marginTop: 'var(--sp-8)',
-        marginBottom: 'var(--sp-8)',
+        background: 'var(--ink)',
+        color: 'var(--fossil)',
+        minHeight: '100vh',
+        position: 'relative',
+        overflowX: 'clip',
       }}
     >
-      {slices.map((s, i) => (
+      {/* Custom smooth cursor ring */}
+      <CursorRing />
+
+      {/* Global page scroll indicators (dashes + line) */}
+      <ScrollIndicators />
+
+      {/* Ephemeral toast notification */}
+      {toastMessage && (
         <div
-          key={i}
+          role="status"
+          aria-live="polite"
           style={{
-            width: s.w,
-            height: '100%',
-            background: s.color,
-            opacity: 0.7,
-            animation: `strata-settle 0.6s ${i * 80}ms cubic-bezier(0.22,1,0.36,1) both`,
+            position: 'fixed',
+            top: 64,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            background: 'var(--ink-raised)',
+            border: '1px solid rgba(232, 224, 210, 0.2)',
+            color: 'var(--fossil)',
+            padding: '6px 14px',
+            borderRadius: 3,
+            fontSize: 'var(--text-xs)',
+            fontFamily: 'var(--font-mono)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            pointerEvents: 'none',
           }}
-        />
-      ))}
-    </div>
-  )
-}
+        >
+          {toastMessage}
+        </div>
+      )}
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+      {/* Slim Hero Header */}
+      <HomeHeader connectionStatus={connectionStatus} />
 
-export function HomePage() {
-  return (
-    <main
-      style={{
-        maxWidth: 860,
-        margin: '0 auto',
-        padding: 'var(--sp-12) var(--sp-6) var(--sp-16)',
-      }}
-    >
-      {/* Hero ---------------------------------------------------------------- */}
-      <section style={{ marginBottom: 'var(--sp-16)' }}>
-        <p
+      {/* ─── SECTION 1: HERO (FULL VIEWPORT) ───────────────────────────────── */}
+      <section
+        style={{
+          position: 'relative',
+          height: 'calc(100vh - var(--topbar-h))',
+          minHeight: 560,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '0 var(--sp-6)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Particle Canvas Background */}
+        <ParticleField ref={particleRef} />
+
+        {/* Center Content Box */}
+        <div
           style={{
+            position: 'relative',
+            zIndex: 5,
+            maxWidth: 820,
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          {/* Headline */}
+          <h1
+            className="font-display"
+            style={{
+              fontSize: 'clamp(2.1rem, 4.3vw, 4.2rem)',
+              lineHeight: 1.15,
+              fontWeight: 800,
+              color: 'var(--fossil)',
+              letterSpacing: '-0.03em',
+              marginBottom: 'var(--sp-6)',
+              maxWidth: '22ch',
+            }}
+          >
+            Sometimes the runs just match, so the broken one shows where.
+          </h1>
+
+          {/* Interactive Pill Buttons */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 'var(--sp-3)',
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleShuffle}
+              style={{
+                background: 'var(--ink-raised)',
+                border: '1px solid rgba(232, 224, 210, 0.22)',
+                color: 'var(--fossil)',
+                padding: '8px 18px',
+                borderRadius: 24,
+                fontSize: 'var(--text-xs)',
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s ease, background-color 0.15s ease',
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.borderColor = 'var(--saffron)'
+                e.currentTarget.style.backgroundColor = 'rgba(227, 169, 43, 0.12)'
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.borderColor = 'rgba(232, 224, 210, 0.22)'
+                e.currentTarget.style.backgroundColor = 'var(--ink-raised)'
+              }}
+            >
+              Reshuffle the layers
+            </button>
+
+            <button
+              type="button"
+              onClick={handleBreak}
+              style={{
+                background: 'var(--ink-raised)',
+                border: '1px solid rgba(240, 69, 127, 0.35)',
+                color: 'var(--fault)',
+                padding: '8px 18px',
+                borderRadius: 24,
+                fontSize: 'var(--text-xs)',
+                fontFamily: 'var(--font-body)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                cursor: 'pointer',
+                transition: 'border-color 0.15s ease, background-color 0.15s ease',
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.borderColor = 'var(--fault)'
+                e.currentTarget.style.backgroundColor = 'rgba(240, 69, 127, 0.15)'
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.borderColor = 'rgba(240, 69, 127, 0.35)'
+                e.currentTarget.style.backgroundColor = 'var(--ink-raised)'
+              }}
+            >
+              Break a layer
+            </button>
+          </div>
+        </div>
+
+        {/* Left Edge: Rolling Odometer Counter */}
+        <div
+          className="hidden md:block"
+          style={{
+            position: 'absolute',
+            left: 36,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+          }}
+        >
+          <RollingCounter label="runs recorded" />
+        </div>
+
+        {/* Right Edge: Rotating Badge (Link to /projects) */}
+        <div className="hidden lg:block">
+          <RotatingBadge />
+        </div>
+
+        {/* Bottom Left: Built at SVNIT Surat */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            left: 36,
+            zIndex: 10,
+            fontSize: 'var(--text-xs)',
             fontFamily: 'var(--font-body)',
-            fontSize: 'var(--text-sm)',
             color: 'var(--fossil-dim)',
-            marginBottom: 'var(--sp-4)',
             letterSpacing: '0.04em',
           }}
         >
-          UNCHARTED 2026 — Track 3: Developer Tools
-        </p>
+          Built at SVNIT Surat
+        </div>
 
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 800,
-            fontSize: 'clamp(2.4rem, 6vw, 4rem)',
-            color: 'var(--fossil)',
-            letterSpacing: '-0.03em',
-            lineHeight: 1.05,
-            marginBottom: 'var(--sp-6)',
-            maxWidth: '14ch',
-          }}
-        >
-          Memory that outlives the session.
-        </h1>
-
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: 'var(--text-lg)',
-            color: 'var(--fossil-dim)',
-            lineHeight: 1.65,
-            maxWidth: '58ch',
-            marginBottom: 'var(--sp-8)',
-          }}
-        >
-          CONTINUUM captures every build, test, and deploy run — human or agent —
-          into MongoDB. It turns that history into live diagnoses: why a run failed,
-          whether a change is safe to ship, and which past failures look similar.
-        </p>
-
-        <HeroStrataStrip />
-
-        <div style={{ display: 'flex', gap: 'var(--sp-4)', flexWrap: 'wrap' }}>
-          <Link
-            to="/projects/proj_alpha"
-            style={{
-              display: 'inline-block',
-              padding: '10px 24px',
-              background: 'var(--fossil)',
-              color: 'var(--ink)',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              textDecoration: 'none',
-              transition: 'opacity 0.15s',
-            }}
-            onMouseOver={e => (e.currentTarget.style.opacity = '0.85')}
-            onMouseOut={e => (e.currentTarget.style.opacity = '1')}
-          >
-            Open timeline
-          </Link>
-          <Link
-            to="/projects"
-            style={{
-              display: 'inline-block',
-              padding: '10px 24px',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: 'var(--fossil-dim)',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 500,
-              fontSize: 'var(--text-sm)',
-              textDecoration: 'none',
-              transition: 'border-color 0.15s, color 0.15s',
-            }}
-            onMouseOver={e => {
-              e.currentTarget.style.borderColor = 'var(--fossil-dim)'
-              e.currentTarget.style.color = 'var(--fossil)'
-            }}
-            onMouseOut={e => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
-              e.currentTarget.style.color = 'var(--fossil-dim)'
-            }}
-          >
-            All projects
-          </Link>
-          <Link
-            to="/docs"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 24px',
-              border: '1px solid var(--saffron)',
-              color: 'var(--saffron)',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              textDecoration: 'none',
-              transition: 'background 0.15s',
-            }}
-            onMouseOver={e => {
-              e.currentTarget.style.background = 'rgba(227, 169, 43, 0.1)'
-            }}
-            onMouseOut={e => {
-              e.currentTarget.style.background = 'transparent'
-            }}
-          >
-            <span>Documentation & CNT</span>
-            <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', background: 'var(--saffron)', color: 'var(--ink)', padding: '1px 5px', borderRadius: 2, fontWeight: 700 }}>
-              GUIDE
-            </span>
-          </Link>
+        {/* Mobile counter under hero content */}
+        <div className="block md:hidden" style={{ marginTop: 'var(--sp-8)', zIndex: 10 }}>
+          <RollingCounter label="runs recorded" />
         </div>
       </section>
 
-      {/* Core question ------------------------------------------------------- */}
-      <section style={{ marginBottom: 'var(--sp-16)' }}>
-        <div
-          style={{
-            borderLeft: '3px solid var(--saffron)',
-            paddingLeft: 'var(--sp-5)',
-            paddingTop: 'var(--sp-2)',
-            paddingBottom: 'var(--sp-2)',
-          }}
-        >
-          <p
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              fontSize: 'var(--text-2xl)',
-              color: 'var(--fossil)',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.25,
-              maxWidth: '48ch',
-            }}
-          >
-            "Why did this run fail,<br />and is it safe to ship?"
-          </p>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fossil-dim)', marginTop: 'var(--sp-3)' }}>
-            That's the core question CONTINUUM answers. Every other feature exists to serve it.
-          </p>
-        </div>
-      </section>
-
-      {/* Feature list -------------------------------------------------------- */}
-      <section>
-        <p
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--fossil-dim)',
-            letterSpacing: '0.08em',
-            marginBottom: 'var(--sp-8)',
-          }}
-        >
-          WHAT WAS BUILT
-        </p>
-
-        <div
-          role="list"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          {FEATURES.map((f, i) => (
-            <div
-              key={f.num}
-              role="listitem"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '52px 1fr auto',
-                gap: 'var(--sp-5)',
-                padding: 'var(--sp-6) 0',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-                alignItems: 'start',
-                animation: `strata-settle 0.5s ${i * 45}ms cubic-bezier(0.22,1,0.36,1) both`,
-              }}
-            >
-              {/* Number */}
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--fossil-dim)',
-                  paddingTop: 4,
-                  opacity: 0.5,
-                }}
-              >
-                {f.num}
-              </span>
-
-              {/* Content */}
-              <div>
-                <h2
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 700,
-                    fontSize: 'var(--text-xl)',
-                    color: 'var(--fossil)',
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.2,
-                    marginBottom: 'var(--sp-2)',
-                  }}
-                >
-                  {f.title}
-                </h2>
-                <p
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 'var(--text-sm)',
-                    color: 'var(--fossil-dim)',
-                    lineHeight: 1.7,
-                    maxWidth: '60ch',
-                  }}
-                >
-                  {f.body}
-                </p>
-              </div>
-
-              {/* Tag */}
-              {f.tag && (
-                <span
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 'var(--text-xs)',
-                    color: TAG_COLORS[f.tag] ?? 'var(--fossil-dim)',
-                    whiteSpace: 'nowrap',
-                    paddingTop: 5,
-                    opacity: 0.8,
-                  }}
-                >
-                  {f.tag}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* MongoDB pitch ------------------------------------------------------- */}
-      <section style={{ marginTop: 'var(--sp-16)', marginBottom: 'var(--sp-16)' }}>
-        <p
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--fossil-dim)',
-            letterSpacing: '0.08em',
-            marginBottom: 'var(--sp-6)',
-          }}
-        >
-          WHY MONGODB
-        </p>
-
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 0,
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          {[
-            { need: 'Dedup events',      without: 'Redis cache + manual check in every write path', with: 'Unique index on _id — one line, enforced at DB level' },
-            { need: 'Validate payloads', without: 'Custom middleware per endpoint',                  with: '$jsonSchema validator on the collection — automatic, zero app code' },
-            { need: 'Detect flakiness',  without: 'Pull all docs into memory, group and loop',       with: '$group / $match aggregation pipeline — computed inside the DB' },
-            { need: 'Live dashboard',    without: 'Separate pub/sub layer (Kafka, Redis)',            with: 'db.collection.watch() — Change Streams built in' },
-            { need: 'Match failures',    without: 'Separate vector DB (Pinecone) + sync pipeline',   with: 'Atlas Vector Search — embeddings live next to structured data' },
-          ].map((row, i) => (
-            <div
-              key={row.need}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '140px 1fr 1fr',
-                gap: 'var(--sp-4)',
-                padding: 'var(--sp-4) 0',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-                alignItems: 'start',
-                animation: `strata-settle 0.5s ${i * 50}ms cubic-bezier(0.22,1,0.36,1) both`,
-              }}
-            >
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil)', fontWeight: 600, paddingTop: 2 }}>
-                {row.need}
-              </span>
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)', lineHeight: 1.6, opacity: 0.6 }}>
-                {row.without}
-              </span>
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--lichen)', lineHeight: 1.6 }}>
-                {row.with}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <p
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 700,
-            fontSize: 'var(--text-lg)',
-            color: 'var(--fossil)',
-            marginTop: 'var(--sp-8)',
-            maxWidth: '60ch',
-            lineHeight: 1.4,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Everything here would normally require 3–4 separate pieces of infrastructure
-          stitched together. MongoDB does it as one system — that's the actual argument.
-        </p>
-      </section>
-
-      {/* CTA ----------------------------------------------------------------- */}
+      {/* ─── SECTION 2: WHAT IT IS ─────────────────────────────────────────── */}
       <section
+        id="what-it-is"
         style={{
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          paddingTop: 'var(--sp-10)',
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          gap: 'var(--sp-6)',
+          maxWidth: 1140,
+          margin: '0 auto',
+          padding: 'var(--sp-16) var(--sp-6)',
         }}
       >
-        <div>
-          <p
+        <Reveal>
+          <div
             style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 800,
-              fontSize: 'var(--text-2xl)',
-              color: 'var(--fossil)',
-              letterSpacing: '-0.02em',
-              lineHeight: 1.15,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--fossil-dim)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              marginBottom: 'var(--sp-4)',
+            }}
+          >
+            What it is
+          </div>
+        </Reveal>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 'var(--sp-12)',
+            alignItems: 'center',
+          }}
+        >
+          {/* Left Column: Heading and narrative */}
+          <div>
+            <StaggerWords
+              as="h2"
+              className="font-display"
+              text="Continuum records every run, human or agent, so the next session starts with memory."
+              italicWords={['records', 'memory']}
+              style={{
+                fontSize: 'clamp(2rem, 3.8vw, 3.4rem)',
+                fontWeight: 800,
+                color: 'var(--fossil)',
+                lineHeight: 1.15,
+                letterSpacing: '-0.02em',
+                marginBottom: 'var(--sp-6)',
+              }}
+            />
+
+            <Reveal delay={120}>
+              <p
+                style={{
+                  fontSize: 'var(--text-base)',
+                  lineHeight: 1.65,
+                  color: 'var(--fossil-dim)',
+                  maxWidth: '46ch',
+                }}
+              >
+                Developers and AI agents lose history when a build fails. CONTINUUM keeps it in MongoDB and turns it into a diagnosis: why it failed, where it diverged from the last good run, and whether it is safe to ship.
+              </p>
+            </Reveal>
+
+            <Reveal delay={180}>
+              <div style={{ marginTop: 'var(--sp-6)' }}>
+                <Link
+                  to="/projects"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 'var(--text-xs)',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--saffron)',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span>Explore live timeline</span>
+                  <span>&rarr;</span>
+                </Link>
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Right Column: Stacked Offset Screenshots */}
+          <Reveal delay={100}>
+            <div
+              style={{
+                position: 'relative',
+                minHeight: 380,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {/* Back Box: Timeline Strata */}
+              <div
+                style={{
+                  position: 'relative',
+                  width: '92%',
+                  maxWidth: 440,
+                  aspectRatio: '16 / 10',
+                  background: 'var(--ink-raised)',
+                  border: '1px solid rgba(232, 224, 210, 0.15)',
+                  borderRadius: 4,
+                  padding: 'var(--sp-4)',
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                  overflow: 'hidden',
+                  zIndex: 2,
+                }}
+              >
+                {/* Fallback visual preview of strata timeline */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, borderBottom: '1px solid rgba(232, 224, 210, 0.08)', paddingBottom: 6 }}>
+                  <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--fossil-dim)' }}>
+                    public/shots/timeline.png
+                  </span>
+                  <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--lichen)' }}>
+                    LIVE STRATA
+                  </span>
+                </div>
+                {/* Simulated strata bands */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ height: 26, background: 'rgba(169, 194, 122, 0.15)', borderLeft: '3px solid var(--sandstone)', borderRadius: 2, display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: '11px', color: 'var(--fossil)' }}>
+                    <span>human · git commit 9a4ef12 · 420ms</span>
+                  </div>
+                  <div style={{ height: 38, background: 'rgba(240, 69, 127, 0.15)', borderLeft: '3px solid var(--glacier)', borderTop: '1px dashed var(--fault)', borderRadius: 2, display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: '11px', color: 'var(--fault)' }}>
+                    <span>AutoDev-v2 · git commit a1b2c3d · divergence at step 3</span>
+                  </div>
+                  <div style={{ height: 26, background: 'rgba(169, 194, 122, 0.15)', borderLeft: '3px solid var(--sandstone)', borderRadius: 2, display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: '11px', color: 'var(--fossil)' }}>
+                    <span>human · npm test · 380ms</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Front Box: Forked Divergence Track (Rotated 1.5deg) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '28%',
+                  right: '2%',
+                  width: '88%',
+                  maxWidth: 420,
+                  aspectRatio: '16 / 10',
+                  background: 'var(--ink-raised)',
+                  border: '1px solid rgba(240, 69, 127, 0.3)',
+                  borderRadius: 4,
+                  padding: 'var(--sp-4)',
+                  boxShadow: '0 24px 48px rgba(0,0,0,0.65)',
+                  transform: 'rotate(1.5deg)',
+                  zIndex: 3,
+                  backdropFilter: 'blur(4px)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, borderBottom: '1px solid rgba(232, 224, 210, 0.08)', paddingBottom: 6 }}>
+                  <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--fossil-dim)' }}>
+                    public/shots/fork.png
+                  </span>
+                  <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--fault)' }}>
+                    FORK TRACK
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, height: 'calc(100% - 32px)' }}>
+                  <div style={{ width: 4, height: '80%', background: 'var(--lichen)', borderRadius: 2 }} />
+                  <div style={{ fontSize: '11px', color: 'var(--fossil-dim)', fontFamily: 'var(--font-mono)', lineHeight: 1.5 }}>
+                    <div style={{ color: 'var(--fault)', fontWeight: 700, marginBottom: 4 }}>
+                      Step 3: Mismatched Parameter
+                    </div>
+                    Expected schema validation to pass. Received empty body.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ─── SECTION 3: HOW IT WORKS ───────────────────────────────────────── */}
+      <section
+        id="how-it-works"
+        style={{
+          maxWidth: 1140,
+          margin: '0 auto',
+          padding: 'var(--sp-16) var(--sp-6)',
+          borderTop: '1px solid rgba(232, 224, 210, 0.08)',
+        }}
+      >
+        <Reveal>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--fossil-dim)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
               marginBottom: 'var(--sp-3)',
             }}
           >
-            See it running.
-          </p>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--fossil-dim)' }}>
-            Open the timeline, click a failed run, and watch the fork track explain the failure.
-          </p>
-        </div>
+            How it works
+          </div>
+          <h2
+            className="font-display"
+            style={{
+              fontSize: 'clamp(2rem, 3.8vw, 3.2rem)',
+              fontWeight: 800,
+              color: 'var(--fossil)',
+              letterSpacing: '-0.02em',
+              marginBottom: 'var(--sp-12)',
+            }}
+          >
+            From terminal command to live diagnosis.
+          </h2>
+        </Reveal>
 
-        <div style={{ display: 'flex', gap: 'var(--sp-3)', flexWrap: 'wrap' }}>
-          <Link
-            to="/projects/proj_alpha"
-            style={{
-              padding: '10px 24px',
-              background: 'var(--fossil)',
-              color: 'var(--ink)',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              textDecoration: 'none',
-            }}
-          >
-            atlas-sync timeline
-          </Link>
-          <Link
-            to={`/runs/run_failed_01`}
-            style={{
-              padding: '10px 24px',
-              border: '1px solid var(--fault)',
-              color: 'var(--fault)',
-              fontFamily: 'var(--font-body)',
-              fontWeight: 500,
-              fontSize: 'var(--text-sm)',
-              textDecoration: 'none',
-            }}
-          >
-            View failed run
-          </Link>
+        {/* Two big numbered lists side by side */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: 'var(--sp-12)',
+          }}
+        >
+          {/* List 1: Capture */}
+          <div>
+            <h3
+              className="font-display"
+              style={{
+                fontSize: 'var(--text-2xl)',
+                fontWeight: 700,
+                color: 'var(--fossil)',
+                marginBottom: 'var(--sp-6)',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400 }}>Capture</span> runs
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {[
+                { num: '01', text: 'Wrap a command with cnt run' },
+                { num: '02', text: 'Or let an agent report steps through MCP' },
+                { num: '03', text: 'Every event gets a stable ID and a timestamp' },
+                { num: '04', text: 'Duplicates and malformed events are rejected by the database' },
+              ].map(item => (
+                <div
+                  key={item.num}
+                  style={{
+                    position: 'relative',
+                    padding: '18px 0',
+                    borderBottom: '1px solid rgba(232, 224, 210, 0.1)',
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 'var(--sp-4)',
+                    cursor: 'default',
+                    transition: 'padding-left 0.2s ease',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.paddingLeft = '6px'
+                    const line = e.currentTarget.querySelector('.hover-line') as HTMLElement | null
+                    if (line) line.style.opacity = '1'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.paddingLeft = '0px'
+                    const line = e.currentTarget.querySelector('.hover-line') as HTMLElement | null
+                    if (line) line.style.opacity = '0'
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-lg)',
+                      fontWeight: 700,
+                      color: 'var(--saffron)',
+                      minWidth: '2ch',
+                    }}
+                  >
+                    {item.num}
+                  </span>
+                  <span style={{ fontSize: 'var(--text-base)', color: 'var(--fossil)', lineHeight: 1.5 }}>
+                    {item.text}
+                  </span>
+                  <div
+                    className="hover-line"
+                    style={{
+                      position: 'absolute',
+                      bottom: -1,
+                      left: 0,
+                      right: 0,
+                      height: 1,
+                      backgroundColor: 'var(--saffron)',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* List 2: Diagnose */}
+          <div>
+            <h3
+              className="font-display"
+              style={{
+                fontSize: 'var(--text-2xl)',
+                fontWeight: 700,
+                color: 'var(--fossil)',
+                marginBottom: 'var(--sp-6)',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontWeight: 400 }}>Diagnose</span> failures
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {[
+                { num: '01', text: 'Compare a failed run with the last good one, step by step' },
+                { num: '02', text: 'Find the first step where they split' },
+                { num: '03', text: 'Tell flaky tests from real regressions' },
+                { num: '04', text: 'Surface similar past failures and give a verdict: safe, risky, or blocked' },
+              ].map(item => (
+                <div
+                  key={item.num}
+                  style={{
+                    position: 'relative',
+                    padding: '18px 0',
+                    borderBottom: '1px solid rgba(232, 224, 210, 0.1)',
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 'var(--sp-4)',
+                    cursor: 'default',
+                    transition: 'padding-left 0.2s ease',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.paddingLeft = '6px'
+                    const line = e.currentTarget.querySelector('.hover-line') as HTMLElement | null
+                    if (line) line.style.opacity = '1'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.paddingLeft = '0px'
+                    const line = e.currentTarget.querySelector('.hover-line') as HTMLElement | null
+                    if (line) line.style.opacity = '0'
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-lg)',
+                      fontWeight: 700,
+                      color: 'var(--lichen)',
+                      minWidth: '2ch',
+                    }}
+                  >
+                    {item.num}
+                  </span>
+                  <span style={{ fontSize: 'var(--text-base)', color: 'var(--fossil)', lineHeight: 1.5 }}>
+                    {item.text}
+                  </span>
+                  <div
+                    className="hover-line"
+                    style={{
+                      position: 'absolute',
+                      bottom: -1,
+                      left: 0,
+                      right: 0,
+                      height: 1,
+                      backgroundColor: 'var(--lichen)',
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
-    </main>
+
+      {/* ─── SECTION 4: ONE SYSTEM (MONGODB ARGUMENT) ──────────────────────── */}
+      <section
+        id="one-system"
+        style={{
+          maxWidth: 1140,
+          margin: '0 auto',
+          padding: 'var(--sp-16) var(--sp-6)',
+          borderTop: '1px solid rgba(232, 224, 210, 0.08)',
+        }}
+      >
+        <Reveal>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--fossil-dim)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              marginBottom: 'var(--sp-3)',
+            }}
+          >
+            One system
+          </div>
+          <h2
+            className="font-display"
+            style={{
+              fontSize: 'clamp(2rem, 3.8vw, 3.2rem)',
+              fontWeight: 800,
+              color: 'var(--fossil)',
+              letterSpacing: '-0.02em',
+              marginBottom: 'var(--sp-10)',
+            }}
+          >
+            Simplicity by architecture.
+          </h2>
+        </Reveal>
+
+        {/* Wide Table-like List */}
+        <Reveal delay={120}>
+          <div
+            style={{
+              width: '100%',
+              borderTop: '1px solid rgba(232, 224, 210, 0.15)',
+              marginBottom: 'var(--sp-10)',
+            }}
+          >
+            {/* Header row */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1.2fr 1.2fr 1fr',
+                padding: '12px 16px',
+                borderBottom: '1px solid rgba(232, 224, 210, 0.15)',
+                fontSize: 'var(--text-xs)',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--fossil-dim)',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}
+            >
+              <div>Need</div>
+              <div>Usually needs</div>
+              <div>Here</div>
+            </div>
+
+            {/* Rows */}
+            {[
+              {
+                need: 'No duplicate events',
+                usually: 'a Redis cache',
+                here: 'a unique _id',
+              },
+              {
+                need: 'Valid events, flexible payload',
+                usually: 'validation middleware',
+                here: '$jsonSchema validator',
+              },
+              {
+                need: 'Compare runs',
+                usually: 'loops in app code',
+                here: 'an aggregation pipeline',
+              },
+              {
+                need: 'Live updates',
+                usually: 'Kafka or pub/sub',
+                here: 'change streams',
+              },
+            ].map(row => (
+              <div
+                key={row.need}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.2fr 1.2fr 1fr',
+                  padding: '18px 16px',
+                  borderBottom: '1px solid rgba(232, 224, 210, 0.08)',
+                  alignItems: 'baseline',
+                }}
+              >
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--fossil)', fontWeight: 600 }}>
+                  {row.need}
+                </div>
+                <div
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--fossil-dim)',
+                    textDecoration: 'line-through',
+                    opacity: 0.65,
+                  }}
+                >
+                  {row.usually}
+                </div>
+                <div
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--lichen)',
+                    fontWeight: 700,
+                  }}
+                >
+                  {row.here}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        {/* Closing line */}
+        <Reveal delay={200}>
+          <div
+            className="font-display"
+            style={{
+              fontSize: 'clamp(1.8rem, 3.2vw, 2.8rem)',
+              fontWeight: 800,
+              color: 'var(--fossil)',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Four problems. One database.
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ─── SECTION 5: CALL TO ACTION AND FOOTER ─────────────────────────── */}
+      <section
+        id="cta"
+        style={{
+          maxWidth: 1140,
+          margin: '0 auto',
+          padding: 'var(--sp-16) var(--sp-6) var(--sp-12)',
+          borderTop: '1px solid rgba(232, 224, 210, 0.08)',
+        }}
+      >
+        <Reveal>
+          <h2
+            className="font-display"
+            style={{
+              fontSize: 'clamp(2.4rem, 5vw, 4.4rem)',
+              fontWeight: 800,
+              color: 'var(--fossil)',
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1,
+              marginBottom: 'var(--sp-8)',
+              maxWidth: '18ch',
+            }}
+          >
+            See a failure find its own fork.
+          </h2>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--sp-5)',
+              flexWrap: 'wrap',
+              marginBottom: 'var(--sp-16)',
+            }}
+          >
+            <Link
+              to="/projects"
+              style={{
+                display: 'inline-block',
+                background: 'var(--saffron)',
+                color: 'var(--ink)',
+                padding: '12px 28px',
+                borderRadius: 3,
+                fontSize: 'var(--text-sm)',
+                fontFamily: 'var(--font-display)',
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                textDecoration: 'none',
+                transition: 'opacity 0.15s ease',
+              }}
+              onMouseOver={e => (e.currentTarget.style.opacity = '0.9')}
+              onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+            >
+              Open the dashboard
+            </Link>
+
+            <a
+              href={DEMO_VIDEO_URL}
+              style={{
+                fontSize: 'var(--text-sm)',
+                color: 'var(--fossil-dim)',
+                textDecoration: 'none',
+                fontFamily: 'var(--font-body)',
+                transition: 'color 0.15s ease',
+              }}
+              onMouseOver={e => (e.currentTarget.style.color = 'var(--fossil)')}
+              onMouseOut={e => (e.currentTarget.style.color = 'var(--fossil-dim)')}
+            >
+              Watch the demo video
+            </a>
+          </div>
+        </Reveal>
+
+        {/* Footer */}
+        <footer
+          style={{
+            borderTop: '1px solid rgba(232, 224, 210, 0.12)',
+            paddingTop: 'var(--sp-8)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--sp-6)',
+          }}
+        >
+          {/* Centered end mark */}
+          <div
+            style={{
+              textAlign: 'center',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--fossil-dim)',
+              letterSpacing: '0.2em',
+            }}
+          >
+            the end ✧
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 'var(--sp-4)',
+            }}
+          >
+            {/* Team line */}
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)' }}>
+              Built by Team {TEAM_NAME} at SVNIT Surat
+            </div>
+
+            {/* Footer Navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-6)' }}>
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--fossil-dim)',
+                  textDecoration: 'none',
+                  fontFamily: 'var(--font-mono)',
+                }}
+                onMouseOver={e => (e.currentTarget.style.color = 'var(--fossil)')}
+                onMouseOut={e => (e.currentTarget.style.color = 'var(--fossil-dim)')}
+              >
+                GitHub
+              </a>
+
+              <Link
+                to="/docs"
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--fossil-dim)',
+                  textDecoration: 'none',
+                  fontFamily: 'var(--font-mono)',
+                }}
+                onMouseOver={e => (e.currentTarget.style.color = 'var(--fossil)')}
+                onMouseOut={e => (e.currentTarget.style.color = 'var(--fossil-dim)')}
+              >
+                Docs (CNT CLI)
+              </Link>
+
+              <Link
+                to="/projects"
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--saffron)',
+                  textDecoration: 'none',
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                }}
+              >
+                Dashboard &rarr;
+              </Link>
+            </div>
+          </div>
+        </footer>
+      </section>
+    </div>
   )
 }

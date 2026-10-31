@@ -162,7 +162,7 @@ export function TimelinePage({ onRunUpsert, onReconnect }: Props) {
   return (
     <main className="mx-auto" style={{ maxWidth: 1000, padding: 'var(--sp-8) var(--sp-6)' }}>
       <nav aria-label="Breadcrumb" style={{ marginBottom: 'var(--sp-4)' }}>
-        <Link to="/" style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)' }}>Projects</Link>
+        <Link to="/projects" style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)' }}>Projects</Link>
         <span aria-hidden style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil-dim)', margin: '0 6px' }}>/</span>
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--fossil)' }}>
           {project?.name ?? projectId}
