@@ -45,6 +45,20 @@ router.get("/.well-known/oauth-authorization-server", (_req: Request, res: Respo
     grant_types_supported: ["authorization_code", "client_credentials"],
     code_challenge_methods_supported: ["S256", "plain"],
     token_endpoint_auth_methods_supported: ["none", "client_secret_basic", "client_secret_post"],
+    registration_endpoint: API_BASE + "/oauth/register",
+  });
+});
+
+// RFC 7591: Dynamic Client Registration (DCR) for Claude Desktop
+router.post("/oauth/register", (req: Request, res: Response) => {
+  const clientId = uuidv4();
+  res.status(201).json({
+    client_id: clientId,
+    client_name: req.body?.client_name || "Claude Desktop",
+    redirect_uris: req.body?.redirect_uris || [],
+    grant_types: ["authorization_code"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
   });
 });
 

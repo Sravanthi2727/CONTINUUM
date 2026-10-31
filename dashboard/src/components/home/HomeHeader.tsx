@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { clearAuthSession, getAuthUser } from '../../api/client'
 import type { ConnectionStatus } from '../../hooks/useSocket'
+import { scrollToTarget } from '../../lib/smoothScroll'
 import type { User } from '../../types'
 
 interface HomeHeaderProps {
@@ -31,10 +32,7 @@ export function HomeHeader({ connectionStatus }: HomeHeaderProps) {
   const scrollToHowItWorks = (e: React.MouseEvent) => {
     e.preventDefault()
     setMobileMenuOpen(false)
-    const el = document.getElementById('how-it-works')
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
-    }
+    scrollToTarget('#how-it-works', { duration: 1.4 })
   }
 
   return (

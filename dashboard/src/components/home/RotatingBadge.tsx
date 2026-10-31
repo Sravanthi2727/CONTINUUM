@@ -1,10 +1,43 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
+import { gsap } from '../../lib/scrollFx'
+import { getScrollVelocity } from '../../lib/smoothScroll'
 
 export function RotatingBadge() {
   const prefersReducedMotion = useReducedMotion()
   const [isHovered, setIsHovered] = useState(false)
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const rotationRef = useRef(0)
+  const boostRef = useRef(0)
+  const isHoveredRef = useRef(false)
+  isHoveredRef.current = isHovered
+
+  useEffect(() => {
+    if (prefersReducedMotion) return
+
+    const tick = () => {
+      const svg = svgRef.current
+      if (!svg) return
+
+      // Base rotation rate: faster on hover (~0.35 deg/frame) vs idle (~0.075 deg/frame)
+      const baseRate = isHoveredRef.current ? 0.38 : 0.085
+
+      // Scroll velocity boost: add velocity * 0.4 deg per frame
+      const vel = Math.abs(getScrollVelocity())
+      boostRef.current += vel * 0.4
+      // Exponential decay back to 0
+      boostRef.current *= 0.88
+
+      rotationRef.current = (rotationRef.current + baseRate + boostRef.current) % 360
+      svg.style.transform = `rotate(${rotationRef.current}deg)`
+    }
+
+    gsap.ticker.add(tick)
+    return () => {
+      gsap.ticker.remove(tick)
+    }
+  }, [prefersReducedMotion])
 
   const size = 260
   const radius = 95
@@ -24,14 +57,13 @@ export function RotatingBadge() {
       }}
     >
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${size} ${size}`}
         style={{
           width: '100%',
           height: '100%',
-          animation: prefersReducedMotion
-            ? 'none'
-            : `spin-badge ${isHovered ? '24s' : '75s'} linear infinite`,
           transformOrigin: 'center center',
+          willChange: 'transform',
         }}
       >
         <defs>
@@ -76,13 +108,6 @@ export function RotatingBadge() {
           style={{ transition: 'fill 0.2s ease' }}
         />
       </svg>
-
-      <style>{`
-        @keyframes spin-badge {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </Link>
   )
 }

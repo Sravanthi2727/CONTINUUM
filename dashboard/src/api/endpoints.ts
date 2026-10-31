@@ -251,6 +251,12 @@ export interface RunFilters {
   limit?: number
 }
 
+export async function fetchAllRuns(): Promise<Run[]> {
+  if (USE_MOCKS) return delay(mockStore.listAllRuns().map(normalizeRun))
+  const data = await apiFetch<unknown[]>('/runs')
+  return (Array.isArray(data) ? data : []).map(normalizeRun)
+}
+
 export async function fetchRuns(projectId: string, filters?: RunFilters): Promise<Run[]> {
   if (USE_MOCKS) return delay(mockStore.listRuns(projectId, filters).map(normalizeRun))
   const params = new URLSearchParams()
@@ -381,11 +387,20 @@ export async function authLogin(email: string, password: string): Promise<AuthRe
     })
   }
 
-  const res = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+  } catch {
+    res = await fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(data.error || data.message || `Login failed (HTTP ${res.status})`)
@@ -417,11 +432,20 @@ export async function authRegister(
     })
   }
 
-  const res = await fetch(`${API_URL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, name }),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    })
+  } catch {
+    res = await fetch('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    })
+  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(data.error || data.message || `Registration failed (HTTP ${res.status})`)

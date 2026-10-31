@@ -2,6 +2,9 @@
   "name": "continuum",
   "version": "1.0.0",
   "private": true,
+  "bin": {
+    "cnt": "./cli/dist/index.js"
+  },
   "workspaces": [
     "api",
     "cli",

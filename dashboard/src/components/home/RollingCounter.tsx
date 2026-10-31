@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchProjects } from '../../api/endpoints'
+import { fetchAllRuns } from '../../api/endpoints'
 import { USE_MOCKS } from '../../config'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 
@@ -71,21 +71,26 @@ export function RollingCounter({ label = 'runs recorded' }: RollingCounterProps)
 
     async function loadCount() {
       try {
-        const projects = await fetchProjects()
-        if (!mounted) return
-        const sum = projects.reduce((acc, p) => acc + (p.stats?.total_runs || 0), 0)
-        // If mock or demo has small count, pad to realistic telemetry scale (e.g. 1'471)
-        const finalCount = sum > 0 ? (USE_MOCKS ? 1471 + sum : sum) : (USE_MOCKS ? 1471 : 0)
-        setCount(finalCount)
-        setIsOffline(false)
-      } catch {
-        if (!mounted) return
         if (USE_MOCKS) {
+          if (!mounted) return
           setCount(1471)
+          setIsOffline(false)
+          return
+        }
+
+        const runs = await fetchAllRuns()
+        if (!mounted) return
+        if (Array.isArray(runs)) {
+          setCount(runs.length)
           setIsOffline(false)
         } else {
           setIsOffline(true)
+          setCount(null)
         }
+      } catch {
+        if (!mounted) return
+        setIsOffline(true)
+        setCount(null)
       }
     }
 
@@ -97,7 +102,7 @@ export function RollingCounter({ label = 'runs recorded' }: RollingCounterProps)
     }
   }, [])
 
-  // Format with apostrophe separator (e.g. 1'471)
+  // Format with apostrophe separator (e.g. 1'471 or 26)
   const formattedDigits = (() => {
     if (count === null || isOffline) return []
     const str = count.toLocaleString('en-US').replace(/,/g, "'")
@@ -118,6 +123,8 @@ export function RollingCounter({ label = 'runs recorded' }: RollingCounterProps)
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--text-xs)',
             color: 'var(--fossil-dim)',
+            fontStyle: 'italic',
+            letterSpacing: '0.05em',
           }}
         >
           offline
@@ -128,9 +135,11 @@ export function RollingCounter({ label = 'runs recorded' }: RollingCounterProps)
             fontFamily: 'var(--font-mono)',
             fontSize: 'var(--text-lg)',
             color: 'var(--fossil-dim)',
+            opacity: 0.45,
+            letterSpacing: '3px',
           }}
         >
-          ...
+          ---
         </span>
       ) : (
         <div style={{ display: 'flex', alignItems: 'baseline', fontSize: 'var(--text-xl)' }}>
@@ -152,4 +161,3 @@ export function RollingCounter({ label = 'runs recorded' }: RollingCounterProps)
     </div>
   )
 }
-

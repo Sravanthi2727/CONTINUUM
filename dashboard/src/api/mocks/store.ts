@@ -77,6 +77,10 @@ export const mockStore = {
     return this.listProjects().find(p => p._id === id)
   },
 
+  listAllRuns(): Run[] {
+    return runs
+  },
+
   listRuns(projectId: string, filters?: RunFilters): Run[] {
     let list = runs.filter(r => r.project_id === projectId)
     if (filters?.source) list = list.filter(r => r.source === filters.source)

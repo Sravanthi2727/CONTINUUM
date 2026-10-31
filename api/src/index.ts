@@ -25,9 +25,12 @@ app.use(
   cors({
     origin: true,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["*"],
   })
 );
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok", time: new Date() }));
 

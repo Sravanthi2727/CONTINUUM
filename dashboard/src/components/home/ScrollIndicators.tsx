@@ -1,9 +1,35 @@
+import { useEffect, useState } from 'react'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
-import { useScrollProgress } from '../../hooks/useScrollProgress'
+import { ScrollTrigger } from '../../lib/scrollFx'
 
 export function ScrollIndicators() {
-  const { progress, activeSection } = useScrollProgress()
+  const [progress, setProgress] = useState(0)
+  const [activeSection, setActiveSection] = useState(0)
   const prefersReducedMotion = useReducedMotion()
+
+  useEffect(() => {
+    const st = ScrollTrigger.create({
+      start: 0,
+      end: 'max',
+      onUpdate: self => {
+        const p = self.progress
+        setProgress(p)
+        if (p >= 0.72) {
+          setActiveSection(3)
+        } else if (p >= 0.42) {
+          setActiveSection(2)
+        } else if (p >= 0.15) {
+          setActiveSection(1)
+        } else {
+          setActiveSection(0)
+        }
+      },
+    })
+
+    return () => {
+      st.kill()
+    }
+  }, [])
 
   return (
     <>
@@ -41,7 +67,7 @@ export function ScrollIndicators() {
         })}
       </div>
 
-      {/* Right Edge: Thin vertical scroll progress line placed above bottom controls */}
+      {/* Right Edge: Thin vertical scroll progress line */}
       <div
         aria-hidden="true"
         style={{
