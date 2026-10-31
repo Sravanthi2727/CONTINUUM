@@ -134,18 +134,37 @@ npm run dev:dashboard
 
 ## 6. CLI Usage (`cnt`)
 
+The unified CLI works across macOS, Linux, and Windows via npm/npx:
+
 ```bash
-# Initialize a repo as a CONTINUUM project (generates .continuum.json)
-node packages/cli/dist/index.js init
+# 1. User Authentication
+cnt login                  # Authenticate and securely store token in ~/.continuum/auth.json
+cnt register               # Create new CONTINUUM user account
+cnt whoami                 # Check current active cloud session
+cnt logout                 # Clear credentials
 
-# Wrap any command — logs command_run, test_result, and failure events live
-node packages/cli/dist/index.js run "npm test"
+# 2. Project Lifecycle
+cnt init                   # Interactively init or pass flags (-n <name> -r <repo>)
+cnt projects               # List projects available to your user account
+cnt clean                  # Remove local .continuum.json (or --cloud to wipe DB project)
 
-# View recent run history directly from the terminal
-node packages/cli/dist/index.js history --limit 5
+# 3. Execution (Human or Agent)
+cnt run "npm test"         # Wrap command, streams command_run, test_result, error to MongoDB
+cnt run "npm test" --source agent --agent "Claude" # Log agent runs directly
 
-# Output MCP server config for Cursor or Claude Code
-node packages/cli/dist/index.js link-agent
+# 4. Lifecycle Event Ingestion
+cnt log -t plan_step -m "Analyzing architecture"
+cnt log -t tool_call -p '{"tool":"git_diff","args":"HEAD~1"}'
+cnt log -t diff_submitted -p '{"files":["auth.ts"]}'
+cnt log -t error -m "SyntaxError: Unexpected token"
+
+# 5. Combined Agent Run Debugger & Change Verifier
+cnt divergence -r <run_id> # Isolate exact step-by-step misalignment against baseline run
+cnt verify -r <run_id>     # Audit agent claims against events (safe | risky | blocked)
+
+# 6. History & MCP Linking
+cnt history -n 10          # Terminal overview of recent runs
+cnt link-agent             # Output Streamable HTTP MCP snippet for Claude/Cursor
 ```
 
 ---
