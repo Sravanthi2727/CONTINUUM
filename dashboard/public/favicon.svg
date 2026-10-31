@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Core sample cross-section: concentric sediment rings -->
+  <rect width="32" height="32" fill="#241A2B"/>
+  <!-- Strata layers -->
+  <rect x="4" y="8"  width="24" height="5" fill="#A9C27A" opacity="0.9"/>
+  <rect x="4" y="14" width="24" height="5" fill="#E8E0D2" opacity="0.6"/>
+  <!-- Fault line (failed layer) with fracture -->
+  <polygon points="4,19 7,20 10,19 13,21 16,19 19,20 22,19 25,20 28,19 28,24 4,24" fill="#F0457F" opacity="0.85"/>
+  <rect x="4" y="24" width="24" height="4" fill="#7FD1C1" opacity="0.5"/>
+</svg>

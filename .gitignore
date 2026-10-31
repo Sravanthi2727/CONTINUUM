@@ -1,13 +1,26 @@
-# Secrets & Local Config
-.env
-.continuum.json
-
 # Dependencies
 node_modules/
-**/node_modules/
+.pnp
+.pnp.js
 
-# Build artifacts
+# Production builds
 dist/
-**/dist/
-.vite/
-**/.vite/
+build/
+
+# Environment variables & secrets (Hard rule: never commit secrets or .env)
+.env
+.env*.local
+*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

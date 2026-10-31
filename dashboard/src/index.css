@@ -1,0 +1,221 @@
+@tailwind utilities;
+
+/* ============================================================
+   CONTINUUM — Design tokens and base styles
+   "Core sample" concept: layers, depth, fracture
+   ============================================================ */
+
+:root {
+  /* Palette */
+  --ink: #241A2B;
+  --ink-raised: #33243A;
+  --fossil: #E8E0D2;
+  --fossil-dim: #A596A8;
+  --lichen: #A9C27A;
+  --saffron: #E3A92B;
+  --fault: #F0457F;
+  --sandstone: #C9A27E;
+  --glacier: #7FD1C1;
+
+  /* Typography */
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, monospace;
+
+  /* Type scale */
+  --text-xs: 0.6875rem;   /* 11px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.375rem;    /* 22px */
+  --text-2xl: 1.75rem;    /* 28px */
+  --text-3xl: 2.25rem;    /* 36px */
+  --text-4xl: 3rem;       /* 48px */
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* Layout */
+  --topbar-h: 52px;
+  --band-min-h: 52px;
+  --band-max-h: 140px;
+  --fracture-path: polygon(0 10px, 4% 2px, 9% 11px, 15% 3px, 22% 9px, 30% 1px, 38% 10px, 47% 2px, 55% 9px, 63% 1px, 72% 8px, 80% 2px, 88% 10px, 95% 3px, 100% 8px, 100% 100%, 0 100%);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--ink);
+  color: var(--fossil);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* ============================================================
+   Focus styles — visible keyboard focus
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid var(--lichen);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Scrollbar styling (webkit)
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: var(--ink); }
+::-webkit-scrollbar-thumb { background: var(--ink-raised); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fossil-dim); }
+
+/* ============================================================
+   Utility classes
+   ============================================================ */
+.font-display { font-family: var(--font-display); }
+.font-body    { font-family: var(--font-body); }
+.font-mono    { font-family: var(--font-mono); }
+
+.text-fossil     { color: var(--fossil); }
+.text-fossil-dim { color: var(--fossil-dim); }
+.text-lichen     { color: var(--lichen); }
+.text-saffron    { color: var(--saffron); }
+.text-fault      { color: var(--fault); }
+.text-sandstone  { color: var(--sandstone); }
+.text-glacier    { color: var(--glacier); }
+
+.bg-ink        { background-color: var(--ink); }
+.bg-ink-raised { background-color: var(--ink-raised); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes strata-settle {
+  from { transform: translateY(-16px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes band-push-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes highlight-flash {
+  0%   { box-shadow: inset 0 0 0 2px var(--lichen); }
+  60%  { box-shadow: inset 0 0 0 2px var(--lichen); }
+  100% { box-shadow: none; }
+}
+
+@keyframes fracture-in {
+  0%   { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+  100% { clip-path: var(--fracture-path); }
+}
+
+@keyframes toast-slide-in {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes toast-slide-out {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(120%); opacity: 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ============================================================
+   Responsive — tablet breakpoint
+   ============================================================ */
+@media (max-width: 680px) {
+  :root {
+    --text-3xl: 1.75rem;
+    --text-2xl: 1.375rem;
+    --text-4xl: 2.25rem;
+  }
+
+  .fork-after {
+    flex-direction: column;
+  }
+
+  .depth-markers-wrap {
+    overflow-x: auto;
+  }
+}
+
+/* ============================================================
+   Interactive states — strata band hover
+   ============================================================ */
+.strata-band-btn:hover {
+  filter: brightness(1.04);
+}
+.strata-band-btn:active {
+  filter: brightness(0.97);
+}
+.strata-band-btn:focus-visible {
+  outline: 2px solid var(--fossil);
+  outline-offset: 2px;
+}
+
+/* Project list row hover */
+.project-row:hover h2 {
+  color: var(--lichen);
+  transition: color 0.15s;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
