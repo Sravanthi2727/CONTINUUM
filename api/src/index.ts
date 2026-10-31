@@ -16,12 +16,12 @@ const app = express();
 const httpServer = createServer(app);
 const io = new SocketServer(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "*",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
 
-app.use(cors({ origin: process.env.CLIENT_URL || "*" }));
+app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], allowedHeaders: ["*"] }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
