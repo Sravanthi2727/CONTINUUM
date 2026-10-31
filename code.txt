@@ -1,0 +1,207 @@
+# Product: **CONTINUUM**
+
+*"Memory that outlives the session."*
+
+One-liner: **A CLI + MCP layer that captures every build/test/deploy run — human or agent — into MongoDB, turns that history into live diagnoses (why it failed, is it safe), and gives any agent, any session, any teammate access to the same memory.**
+
+---
+
+## 1. Architecture Overview
+
+```
+┌─────────────┐      ┌──────────────┐      ┌─────────────────┐
+│  Human CLI   │─────▶│              │      │                 │
+│ "cnt run ..."│      │  Ingestion    │─────▶│    MongoDB      │
+└─────────────┘      │  API (Express │      │  Atlas          │
+┌─────────────┐      │  + TS)        │      │  - projects     │
+│ Agent (MCP   │─────▶│              │      │  - runs         │
+│ tool calls)  │      └──────┬───────┘      │  - events       │
+└─────────────┘             │               │  - verifications│
+                             │               │  - findings     │
+                      ┌──────▼───────┐      └────────┬────────┘
+                      │ Change Stream │               │
+                      │ Listener      │◀──────────────┘
+                      └──────┬───────┘
+                             │ (websocket)
+                      ┌──────▼───────┐
+                      │ Web Dashboard │
+                      │ (React + TS)  │
+                      └───────────────┘
+```
+
+Two independent write paths (CLI, MCP) → one ingestion API → one MongoDB → live-pushed to one dashboard. Simple, no redundant services.
+
+---
+
+## 2. Tech Stack (all TypeScript)
+
+| Layer | Tech |
+|---|---|
+| CLI | Node + TypeScript, `commander` for CLI parsing |
+| Ingestion API | Express (or Fastify) + TypeScript |
+| MCP Server | `@modelcontextprotocol/sdk` (TS) exposing tools: `getProjectHistory`, `findSimilarFailures` |
+| Database | MongoDB Atlas (Vector Search + Change Streams + Atlas Triggers for auto-embedding) |
+| Embeddings | Voyage AI or OpenAI `text-embedding-3-small`, via Atlas Trigger on insert |
+| Realtime | MongoDB Change Streams → Socket.IO to dashboard |
+| Web Dashboard | React + Vite + TypeScript |
+| Auth (simple) | JWT-based email/password or magic-link, just enough to scope `owner_id` |
+| Hosting | Render/Railway for API, Vercel for dashboard (fast, zero-config) |
+
+---
+
+## 3. Data Model (TypeScript interfaces)
+
+```typescript
+interface Project {
+  _id: string;             // project_id
+  owner_id: string;
+  name: string;
+  repo_url?: string;
+  instrumentation_enabled: boolean;
+  created_at: Date;
+}
+
+interface Run {
+  _id: string;              // run_id
+  project_id: string;
+  source: "human" | "agent";
+  agent_name?: string;       // "cursor", "claude-code", etc.
+  triggered_by: string;      // user_id
+  commit_sha?: string;
+  task_description?: string; // agent's task/prompt, if agent run
+  status: "running" | "success" | "failed";
+  started_at: Date;
+  ended_at?: Date;
+}
+
+interface Event {
+  _id: string;               // event_id (unique index)
+  run_id: string;
+  type: "command_run" | "tool_call" | "diff_submitted" | "test_result" | "error" | "plan_step";
+  step?: number;
+  payload: Record<string, any>;  // flexible per type
+  error_message?: string;
+  error_embedding?: number[];     // auto-generated via Atlas Trigger
+  timestamp: Date;
+}
+
+interface Verification {
+  _id: string;
+  run_id: string;
+  claims: { requirement: string; evidence_file?: string; evidence_test?: string; status: "proven"|"unproven" }[];
+  verdict: "safe" | "risky" | "blocked";
+  computed_at: Date;
+}
+
+interface Finding {
+  _id: string;
+  project_id: string;
+  type: "flaky_test" | "regression" | "divergence" | "similar_past_failure";
+  details: Record<string, any>;
+  created_at: Date;
+}
+```
+
+---
+
+## 4. MongoDB Feature Map ("one step vs many steps" — your presentation line)
+
+| Need | Without MongoDB | With MongoDB |
+|---|---|---|
+| Prevent duplicate events | Build a dedup cache (Redis) + manual check in every write path | `db.events.createIndex({_id:1}, {unique:true})` — one line, enforced at DB level |
+| Validate required fields, flexible payload | Write custom validation middleware per endpoint, maintain separately from DB | `$jsonSchema` validator on collection — enforced automatically, no app code |
+| Compare runs / detect flakiness | Pull all documents into app memory, loop and group manually (slow, more code, doesn't scale) | One `$group`/`$match` aggregation pipeline — computed inside DB |
+| Live dashboard updates | Build a separate pub/sub layer (Kafka/Redis) + polling logic | `db.collection.watch()` — change streams built into the same DB |
+| Semantic failure matching | Stand up a separate vector DB (Pinecone/Weaviate) + sync pipeline between two systems | Atlas Vector Search — embeddings live next to the structured data, one query does both filter + similarity |
+
+**The pitch line:** *"Everything here would normally require 3-4 separate pieces of infrastructure stitched together. MongoDB does it as one system — that's the actual argument for using it, not just a sponsor requirement."*
+
+---
+
+## 5. Core Pipelines
+
+1. **Flaky vs Regression** — aggregation: failure rate of a test over last N runs, independent of code changes → verdict.
+2. **Run Divergence (Debugger)** — `$lookup` failed run's events against last successful run on same project, align by `step`, find first mismatch.
+3. **Claim Verification** — cross-check agent's claimed requirements/tests against actual diff + test_result events → proven/unproven/blocked.
+4. **Semantic Failure Clustering** — vector search on `error_embedding` → "91% similar to N past failures."
+5. **Live Timeline** — change stream on `events` → push to dashboard via Socket.IO.
+
+---
+
+## 6. CLI Design
+
+```bash
+cnt init                      # registers project, writes .continuum.json with project_id
+cnt run "npm test"            # wraps human command, logs command_run event
+cnt link-agent                # prints MCP server config snippet for Cursor/Claude Code
+cnt history                   # prints last N runs for this project (CLI view of timeline)
+```
+
+## 7. MCP Server Tools (for agent sessions)
+
+```typescript
+getProjectHistory(project_id): Run[]           // recent runs/events
+findSimilarFailures(error_text): Finding[]      // vector search over past errors
+submitRunEvent(run_id, event): void             // agent reports its own steps
+```
+
+---
+
+## 8. Web Dashboard (simple, 4 pages)
+
+1. **Login** — email/password, JWT, scopes everything by `owner_id`.
+2. **Projects list** — pick a project.
+3. **Timeline view** — scrollable run history, live-updating (change streams), filter human vs agent.
+4. **Run detail** — events sequence, verdict badge (safe/risky/blocked), divergence panel if failed, similar-past-failures panel.
+
+---
+
+## 9. Team Breakdown — 3 Members, 12 Hours
+
+### **Member A — Backend Core (Ingestion + Schema + Dedup/Validation)**
+| Hours | Task |
+|---|---|
+| 0–1 | MongoDB Atlas setup, all 5 collections, unique index on `event_id`, `$jsonSchema` validation on `events` |
+| 1–3 | Express + TS ingestion API: `/projects`, `/runs`, `/events` endpoints, dedup + validation wired in |
+| 3–5 | CLI tool: `cnt init`, `cnt run`, `cnt history` (commander.js) |
+| 5–7 | Seed scripts: generate realistic historical runs (weeks of fake history) for both human and agent sources |
+| 7–9 | Auth (JWT, simple login) wired to API, `owner_id` scoping everywhere |
+| 9–12 | Integration support, bug fixes, help wire demo scenarios |
+
+### **Member B — Intelligence Layer (Pipelines + MCP + Vector Search)**
+| Hours | Task |
+|---|---|
+| 0–2 | Design + write aggregation pipeline: flaky vs regression verdict |
+| 2–4 | Divergence comparison pipeline (`$lookup` + step alignment) |
+| 4–6 | Claim verification logic (requirements vs diff/tests → verdict) |
+| 6–8 | Atlas Trigger for auto-embedding on `error_message` insert; vector search index + similarity query |
+| 8–10 | MCP server: `getProjectHistory`, `findSimilarFailures`, `submitRunEvent` |
+| 10–12 | Test all pipelines against seeded data, fix edge cases, help with demo script |
+
+### **Member C — Dashboard + Realtime + Demo**
+| Hours | Task |
+|---|---|
+| 0–2 | React + TS scaffold, login page wired to Member A's auth |
+| 2–4 | Projects list + timeline view (static first, data from API) |
+| 4–6 | Run detail page: events sequence, verdict badge UI |
+| 6–8 | Socket.IO + change stream wiring for live updates |
+| 8–9 | Divergence panel + similar-failures panel UI |
+| 9–10 | Build the exact demo script scenarios (good run, risky run, duplicate event, malformed event) end-to-end |
+| 10–11 | Record 7-min demo video (scene-cut style) |
+| 11–12 | Deck + rehearsal with whole team |
+
+**Sync points:** Hour 3 (schema frozen, everyone builds against it), Hour 7 (seed data ready, B+C can test against real-looking history), Hour 10 (full pipeline integration test, all three together).
+
+---
+
+## 10. Demo Script (final, mapped to brief exactly)
+
+1. Trigger `cnt run` for a human command + an agent-driven run on the same project → show both appear in dashboard.
+2. Open MongoDB Compass → show `runs`/`events` with stable IDs, timestamps, project links.
+3. Trigger a second agent run with a real divergence (fails differently) → dashboard verdict flips live via change stream, divergence panel explains why.
+4. Failure case: replay a duplicate `event_id` → rejected (unique index); send malformed event missing `run_id` → rejected (schema validation). Both shown live on screen.
+5. Bonus: show MCP tool call from a simulated "new agent session" pulling `getProjectHistory` and `findSimilarFailures` — proving cross-session memory actually works.
+
+---
+
+This is the complete, locked plan. **Say "go"** and I'll start writing the actual MongoDB schema + Express ingestion API code for Member A's track right now.
