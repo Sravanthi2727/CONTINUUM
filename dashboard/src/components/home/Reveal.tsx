@@ -20,29 +20,39 @@ export function Reveal({ children, delay = 0, className, style }: RevealProps) {
     }
 
     const el = ref.current
-    if (!el) return
+    if (!el) {
+      setIsVisible(true)
+      return
+    }
+
+    // Safety timeout: ensure content is never stuck at opacity: 0
+    const safetyTimer = setTimeout(() => {
+      setIsVisible(true)
+    }, 400 + delay)
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true)
+      clearTimeout(safetyTimer)
+      return
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true)
+          clearTimeout(safetyTimer)
           observer.unobserve(entry.target)
         }
       },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+      { threshold: 0.01, rootMargin: '60px 0px 60px 0px' }
     )
 
     observer.observe(el)
-    return () => observer.disconnect()
-  }, [prefersReducedMotion])
-
-  if (prefersReducedMotion) {
-    return (
-      <div className={className} style={style}>
-        {children}
-      </div>
-    )
-  }
+    return () => {
+      observer.disconnect()
+      clearTimeout(safetyTimer)
+    }
+  }, [delay, prefersReducedMotion])
 
   return (
     <div
@@ -50,10 +60,11 @@ export function Reveal({ children, delay = 0, className, style }: RevealProps) {
       className={className}
       style={{
         ...style,
-        opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'translateY(0)' : 'translateY(16px)',
-        transition: `opacity 500ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 500ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
-        willChange: 'opacity, transform',
+        opacity: isVisible || prefersReducedMotion ? 1 : 0,
+        transform: isVisible || prefersReducedMotion ? 'none' : 'translateY(16px)',
+        transition: prefersReducedMotion
+          ? 'none'
+          : `opacity 500ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 500ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
       }}
     >
       {children}
@@ -87,20 +98,37 @@ export function StaggerWords({
     }
 
     const el = ref.current
-    if (!el) return
+    if (!el) {
+      setIsVisible(true)
+      return
+    }
+
+    const safetyTimer = setTimeout(() => {
+      setIsVisible(true)
+    }, 500)
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true)
+      clearTimeout(safetyTimer)
+      return
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true)
+          clearTimeout(safetyTimer)
           observer.unobserve(entry.target)
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.01, rootMargin: '60px 0px 60px 0px' }
     )
 
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      clearTimeout(safetyTimer)
+    }
   }, [prefersReducedMotion])
 
   const words = text.split(' ')
@@ -112,7 +140,6 @@ export function StaggerWords({
       className={className}
       style={{
         ...style,
-        display: 'inline-block',
       }}
     >
       {words.map((word, i) => {
@@ -126,10 +153,10 @@ export function StaggerWords({
               display: 'inline-block',
               marginRight: '0.28em',
               opacity: isVisible || prefersReducedMotion ? 1 : 0,
-              transform: isVisible || prefersReducedMotion ? 'translateY(0)' : 'translateY(12px)',
+              transform: isVisible || prefersReducedMotion ? 'none' : 'translateY(12px)',
               transition: prefersReducedMotion
                 ? 'none'
-                : `opacity 400ms cubic-bezier(0.16, 1, 0.3, 1) ${i * 40}ms, transform 400ms cubic-bezier(0.16, 1, 0.3, 1) ${i * 40}ms`,
+                : `opacity 400ms cubic-bezier(0.16, 1, 0.3, 1) ${i * 35}ms, transform 400ms cubic-bezier(0.16, 1, 0.3, 1) ${i * 35}ms`,
               fontFamily: isItalic ? 'var(--font-serif)' : undefined,
               fontStyle: isItalic ? 'italic' : undefined,
               fontWeight: isItalic ? 400 : undefined,

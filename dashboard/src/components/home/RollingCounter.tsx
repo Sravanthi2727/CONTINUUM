@@ -152,3 +152,4 @@ export function RollingCounter({ label = 'runs recorded' }: RollingCounterProps)
     </div>
   )
 }
+

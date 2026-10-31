@@ -208,7 +208,16 @@ export function HomePage({ connectionStatus = 'connected' }: HomePageProps) {
         </div>
 
         {/* Right Edge: Rotating Badge (Link to /projects) */}
-        <div className="hidden lg:block">
+        <div
+          className="hidden lg:block"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            right: -85,
+            transform: 'translateY(-50%)',
+            zIndex: 10,
+          }}
+        >
           <RotatingBadge />
         </div>
 

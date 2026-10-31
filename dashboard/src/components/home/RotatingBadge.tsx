@@ -17,16 +17,9 @@ export function RotatingBadge() {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
-        position: 'absolute',
-        top: '50%',
-        right: -85,
-        transform: 'translateY(-50%)',
+        display: 'block',
         width: size,
         height: size,
-        zIndex: 10,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         textDecoration: 'none',
       }}
     >
@@ -48,7 +41,6 @@ export function RotatingBadge() {
           />
         </defs>
 
-        {/* Central decorative glyph */}
         <circle
           cx={center}
           cy={center}
@@ -76,7 +68,6 @@ export function RotatingBadge() {
           </textPath>
         </text>
 
-        {/* Center icon */}
         <circle
           cx={center}
           cy={center}

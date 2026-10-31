@@ -71,11 +71,9 @@ export function HomeHeader({ connectionStatus }: HomeHeaderProps) {
 
       {/* Right Desktop Nav */}
       <nav
-        className="hidden md:flex"
+        className="hidden md:flex items-center"
         aria-label="Homepage navigation"
         style={{
-          display: 'flex',
-          alignItems: 'center',
           gap: 'var(--sp-6)',
         }}
       >
@@ -294,3 +292,4 @@ export function HomeHeader({ connectionStatus }: HomeHeaderProps) {
     </header>
   )
 }
+

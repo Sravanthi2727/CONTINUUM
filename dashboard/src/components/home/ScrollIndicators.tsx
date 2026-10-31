@@ -31,7 +31,7 @@ export function ScrollIndicators() {
                 width: isActive ? 18 : 12,
                 height: 2,
                 backgroundColor: isActive ? 'var(--saffron)' : 'var(--fossil-dim)',
-                opacity: isActive ? 1 : 0.3,
+                opacity: isActive ? 1 : 0.35,
                 transform: isActive && !prefersReducedMotion ? 'rotate(-32deg) translateY(-1px)' : 'none',
                 transition: prefersReducedMotion ? 'none' : 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
                 borderRadius: 1,
@@ -41,16 +41,16 @@ export function ScrollIndicators() {
         })}
       </div>
 
-      {/* Bottom Right: Thin vertical scroll progress line */}
+      {/* Right Edge: Thin vertical scroll progress line placed above bottom controls */}
       <div
         aria-hidden="true"
         style={{
           position: 'fixed',
-          bottom: 24,
-          right: 28,
+          bottom: 86,
+          right: 24,
           zIndex: 15,
           width: 2,
-          height: 52,
+          height: 56,
           backgroundColor: 'rgba(232, 224, 210, 0.15)',
           borderRadius: 1,
           overflow: 'hidden',

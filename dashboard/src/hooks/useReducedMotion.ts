@@ -16,3 +16,4 @@ export function useReducedMotion(): boolean {
 
   return matches
 }
+

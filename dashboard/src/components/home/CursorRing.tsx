@@ -1,16 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 
 export function CursorRing() {
   const prefersReducedMotion = useReducedMotion()
   const ringRef = useRef<HTMLDivElement | null>(null)
-  const [isHoveringClickable, setIsHoveringClickable] = useState(false)
-  const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     if (prefersReducedMotion) return
+    if (typeof window === 'undefined') return
 
-    // Hide if touch device
+    // Hide if touch device or coarse pointer
     if (window.matchMedia('(pointer: coarse)').matches) return
 
     let mouseX = -100
@@ -18,25 +17,39 @@ export function CursorRing() {
     let currentX = -100
     let currentY = -100
     let rafId: number | null = null
+    let visible = false
+    let hovered = false
 
     const handleMouseMove = (e: MouseEvent) => {
       mouseX = e.clientX
       mouseY = e.clientY
-      if (!isVisible) setIsVisible(true)
+
+      if (!visible) {
+        visible = true
+        if (ringRef.current) ringRef.current.style.opacity = '1'
+      }
 
       const target = e.target as HTMLElement | null
       const isInteractive = Boolean(
         target && (target.closest('a') || target.closest('button') || target.closest('[role="button"]'))
       )
-      setIsHoveringClickable(isInteractive)
+
+      if (isInteractive !== hovered) {
+        hovered = isInteractive
+        if (ringRef.current) {
+          ringRef.current.style.width = hovered ? '44px' : '26px'
+          ringRef.current.style.height = hovered ? '44px' : '26px'
+          ringRef.current.style.backgroundColor = hovered ? 'rgba(227, 169, 43, 0.18)' : 'transparent'
+        }
+      }
     }
 
     const handleMouseLeave = () => {
-      setIsVisible(false)
+      visible = false
+      if (ringRef.current) ringRef.current.style.opacity = '0'
     }
 
     const loop = () => {
-      // Lerp smooth follow
       currentX += (mouseX - currentX) * 0.2
       currentY += (mouseY - currentY) * 0.2
 
@@ -56,7 +69,7 @@ export function CursorRing() {
       document.body.removeEventListener('mouseleave', handleMouseLeave)
       if (rafId) cancelAnimationFrame(rafId)
     }
-  }, [isVisible, prefersReducedMotion])
+  }, [prefersReducedMotion])
 
   if (prefersReducedMotion) return null
 
@@ -70,13 +83,13 @@ export function CursorRing() {
         left: 0,
         pointerEvents: 'none',
         zIndex: 9999,
-        opacity: isVisible ? 1 : 0,
-        transition: 'opacity 0.2s ease, width 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease',
-        width: isHoveringClickable ? 44 : 26,
-        height: isHoveringClickable ? 44 : 26,
+        opacity: 0,
+        width: 26,
+        height: 26,
         borderRadius: '50%',
         border: '1.5px solid var(--saffron)',
-        backgroundColor: isHoveringClickable ? 'rgba(227, 169, 43, 0.18)' : 'transparent',
+        backgroundColor: 'transparent',
+        transition: 'opacity 0.2s ease, width 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s ease',
         mixBlendMode: 'screen',
       }}
     />
