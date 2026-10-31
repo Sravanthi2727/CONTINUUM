@@ -5,7 +5,10 @@
 **A CLI + MCP layer that captures every build/test/deploy run — human or agent — into MongoDB, turns that history into live diagnoses (why it failed, is it safe), and gives any agent, any session, any teammate access to the same memory.**
 
 **Track:** Track 3, Developer Tools for Production Use Cases  
-**Live Demo:** Express API + Change Streams + React Vite Dashboard + CLI + MCP Server
+**Live Deployed URLs:**
+- 🌐 **Web Dashboard:** [https://continuum-jrxa.onrender.com](https://continuum-jrxa.onrender.com)
+- 🔌 **Ingestion API:** [https://continuum-api-rkp4.onrender.com](https://continuum-api-rkp4.onrender.com)
+- 📡 **API Health Check:** [https://continuum-api-rkp4.onrender.com/health](https://continuum-api-rkp4.onrender.com/health)
 
 ---
 
@@ -149,7 +152,7 @@ node packages/cli/dist/index.js link-agent
 
 ## 7. Model Context Protocol (MCP) Server
 
-Connect your AI agent (Cursor, Claude Code, Windsurf) to CONTINUUM memory:
+Connect your AI agent (Cursor, Copilot, Claude Code, AGY, OpenCode) directly to the CONTINUUM cloud API (no database credentials needed!):
 
 ```json
 {
@@ -158,8 +161,7 @@ Connect your AI agent (Cursor, Claude Code, Windsurf) to CONTINUUM memory:
       "command": "node",
       "args": ["./packages/mcp-server/dist/index.js"],
       "env": {
-        "MONGODB_URI": "mongodb+srv://<user>:<password>@continuum.xn4mwbj.mongodb.net/continuum",
-        "API_BASE_URL": "http://localhost:3001"
+        "API_BASE_URL": "https://continuum-api-rkp4.onrender.com"
       }
     }
   }

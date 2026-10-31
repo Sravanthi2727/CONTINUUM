@@ -5,20 +5,9 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { MongoClient, Db } from "mongodb";
-import { z } from "zod";
-import { getProjectHistory } from "./tools/getProjectHistory";
-import { findSimilarFailures } from "./tools/findSimilarFailures";
 import { submitRunEvent } from "./tools/submitRunEvent";
 
-let db: Db;
-
-async function connectDB() {
-  const client = new MongoClient(process.env.MONGODB_URI!);
-  await client.connect();
-  db = client.db("continuum");
-  console.error("✅ MCP server connected to MongoDB");
-}
+const API_BASE_URL = (process.env.API_BASE_URL || "https://continuum-api-rkp4.onrender.com").replace(/\/$/, "");
 
 const server = new Server(
   { name: "continuum-mcp", version: "1.0.0" },
@@ -30,7 +19,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "getProjectHistory",
       description:
-        "Retrieve the recent run history for a project. Returns runs with their events and verdicts.",
+        "Retrieve the recent run history for a project via the CONTINUUM API. Returns runs with their events, verdicts, and status.",
       inputSchema: {
         type: "object",
         properties: {
@@ -49,17 +38,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "findSimilarFailures",
       description:
-        "Search for past failures similar to the given error text using semantic similarity. Returns the most similar past failures with similarity scores.",
+        "Search for past failures similar to the given error text via the CONTINUUM API. Returns similar past failure clusters with similarity scores.",
       inputSchema: {
         type: "object",
         properties: {
           error_text: {
             type: "string",
-            description: "The error message or text to find similar past failures for",
-          },
-          limit: {
-            type: "number",
-            description: "Maximum number of results to return (default 5)",
+            description: "The error message or failure log to find similar past issues for",
           },
         },
         required: ["error_text"],
@@ -68,7 +53,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "submitRunEvent",
       description:
-        "Submit an event for the current agent run. Used to log tool calls, plan steps, errors, and test results.",
+        "Submit an event for the current agent run directly to CONTINUUM API. Used to log tool calls, plan steps, errors, and test results.",
       inputSchema: {
         type: "object",
         properties: {
@@ -110,21 +95,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case "getProjectHistory": {
-        const { project_id, limit } = args as { project_id: string; limit?: number };
-        const result = await getProjectHistory(db, project_id, limit ?? 10);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        const { project_id } = args as { project_id: string };
+        const res = await fetch(`${API_BASE_URL}/runs?project_id=${project_id}`);
+        const data = await res.json();
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
 
       case "findSimilarFailures": {
-        const { error_text, limit } = args as { error_text: string; limit?: number };
-        const result = await findSimilarFailures(db, error_text, limit ?? 5);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        const { error_text } = args as { error_text: string };
+        const res = await fetch(`${API_BASE_URL}/intelligence/similar?error_text=${encodeURIComponent(error_text)}`);
+        const data = await res.json();
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
 
       case "submitRunEvent": {
         const { run_id, event_id, type, step, payload, error_message } = args as any;
-        const apiUrl = process.env.API_BASE_URL || "http://localhost:3001";
-        const result = await submitRunEvent(apiUrl, {
+        const result = await submitRunEvent(API_BASE_URL, {
           _id: event_id,
           run_id,
           type,
@@ -150,10 +136,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function main() {
-  await connectDB();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("🚀 CONTINUUM MCP server running on stdio");
+  console.error(`🚀 CONTINUUM MCP server running on stdio (Connected to API: ${API_BASE_URL})`);
 }
 
 main().catch((err) => {

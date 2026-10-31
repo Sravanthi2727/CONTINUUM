@@ -7,7 +7,7 @@ import { execSync, spawn } from "child_process";
 import { v4 as uuidv4 } from "uuid";
 
 const CONFIG_FILE = ".continuum.json";
-const API_URL = process.env.CONTINUUM_API_URL || "http://localhost:3001";
+const API_URL = process.env.CONTINUUM_API_URL || "https://continuum-api-rkp4.onrender.com";
 
 function loadConfig(): { project_id: string; project_name: string } | null {
   const configPath = path.join(process.cwd(), CONFIG_FILE);
@@ -199,7 +199,7 @@ program
 // cnt link-agent
 program
   .command("link-agent")
-  .description("Print the MCP server config snippet for your AI agent (Cursor / Claude Code)")
+  .description("Print the MCP server config snippet for your AI agent (Cursor / Claude Code / Copilot)")
   .action(() => {
     const config = loadConfig();
     const mcpConfig = {
@@ -208,13 +208,12 @@ program
           command: "node",
           args: ["./packages/mcp-server/dist/index.js"],
           env: {
-            MONGODB_URI: "mongodb+srv://<user>:<pass>@continuum.xn4mwbj.mongodb.net/continuum",
             API_BASE_URL: API_URL,
           },
         },
       },
     };
-    console.log("\n📋 Add this to your .cursor/mcp.json or claude_desktop_config.json:\n");
+    console.log("\n📋 Add this to your agent's MCP config file (Cursor / Claude / Copilot / AGY):\n");
     console.log(JSON.stringify(mcpConfig, null, 2));
     if (config) {
       console.log(`\n💡 Your project_id: ${config.project_id}`);
