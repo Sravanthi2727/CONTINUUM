@@ -304,12 +304,22 @@ function createMcpServer(clientSessionId: string): Server {
 // Endpoint: /mcp
 // Supports interactive authentication & tool dispatching
 // =========================================================================
-const streamableHttpTransport = new StreamableHTTPServerTransport({
-  sessionIdGenerator: undefined,
-});
+// Shared streamable transport with session tracking
+const streamableTransports = new Map<string, { transport: StreamableHTTPServerTransport; server: Server }>();
 
-const defaultHttpMcpServer = createMcpServer("global-http-session");
-defaultHttpMcpServer.connect(streamableHttpTransport).catch(console.error);
+function getOrCreateTransport(sessionId: string) {
+  let entry = streamableTransports.get(sessionId);
+  if (!entry) {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => sessionId,
+    });
+    const server = createMcpServer(sessionId);
+    server.connect(transport).catch(console.error);
+    entry = { transport, server };
+    streamableTransports.set(sessionId, entry);
+  }
+  return entry.transport;
+}
 
 router.all("/mcp", async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
@@ -337,7 +347,9 @@ router.all("/mcp", async (req: Request, res: Response) => {
 
   // Handle streamable HTTP request scoped to verified user
   try {
-    await streamableHttpTransport.handleRequest(req, res, req.body);
+    const sessionId = (req.headers["mcp-session-id"] as string) || ("session-" + Math.random().toString(36).substring(2, 9));
+  const transport = getOrCreateTransport(sessionId);
+  await transport.handleRequest(req, res, req.body);
   } catch (err: any) {
     console.error("[MCP ERROR]", err);
     if (!res.headersSent) {
